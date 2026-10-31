@@ -135,7 +135,7 @@ def _seed_drop(db, drop_id="MC-TEST-01"):
         drop_id=drop_id, custodian="MERIDIAN",
         as_of_date=_TODAY, delivered_at=_NOW,
         snapshot_type="FULL", supersedes=None,
-        status="accepted", payload_hash="testhash",
+        status="ingested", payload_hash="testhash",
         ingested_at=_NOW,
     )
     db.add(d)

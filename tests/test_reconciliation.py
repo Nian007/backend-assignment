@@ -141,7 +141,7 @@ def _drop(db, drop_id="MC-TEST-01", as_of=None):
         delivered_at=_NOW,
         snapshot_type="FULL",
         supersedes=None,
-        status="accepted",
+        status="ingested",
         payload_hash="abc123",
         ingested_at=_NOW,
     )

@@ -294,7 +294,7 @@ def _effective_drop_ids(db: Session) -> set[str]:
     superseded_drop_ids = {d.supersedes for d in all_drops if d.supersedes}
     effective: set[str] = set()
     for d in all_drops:
-        if d.drop_id not in superseded_drop_ids and d.status == "accepted":
+        if d.drop_id not in superseded_drop_ids and d.status in ("ingested", "accepted"):
             effective.add(d.id)
     return effective
 

@@ -230,7 +230,7 @@ def _latest_valuation(account_id: str, db: Session) -> Valuation | None:
     superseded = {d.supersedes for d in all_drops if d.supersedes}
     effective_drop_ids = {
         d.id for d in all_drops
-        if d.drop_id not in superseded and d.status == "accepted"
+        if d.drop_id not in superseded and d.status in ("ingested", "accepted")
     }
 
     vals = (
