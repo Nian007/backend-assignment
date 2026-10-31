@@ -1,9 +1,9 @@
 import uuid
 import structlog
+import structlog.contextvars
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-import structlog.contextvars
 
 from app.core.database import init_db
 from app.core.settings import get_settings
@@ -15,6 +15,17 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level)
     init_db()
+
+    # Build shared singletons and store on app.state so dependencies can access them
+    from app.policy.engine import PolicyEngine
+    from app.services.sync_orchestrator import SyncOrchestrator
+    app.state.policy = PolicyEngine(
+        policy_path=settings.data_policy_path,
+        data_encryption_key=settings.data_encryption_key,
+        hmac_secret_key=settings.hmac_secret_key,
+    )
+    app.state.orchestrator = SyncOrchestrator(policy=app.state.policy)
+
     structlog.get_logger().info("service_started", database_url=settings.database_url)
     yield
     structlog.get_logger().info("service_stopped")
@@ -28,21 +39,39 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # ------------------------------------------------------------------ #
+    # Correlation-ID middleware                                            #
+    # ------------------------------------------------------------------ #
     @app.middleware("http")
     async def correlation_middleware(request: Request, call_next):
-        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+        cid = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+        request.state.correlation_id = cid
         structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(correlation_id=correlation_id)
+        structlog.contextvars.bind_contextvars(correlation_id=cid)
         response = await call_next(request)
-        response.headers["X-Correlation-ID"] = correlation_id
+        response.headers["X-Correlation-ID"] = cid
         return response
 
-    # Routers registered in later stages
-    # from app.api.context import router as context_router
-    # from app.api.ops import router as ops_router
-    # app.include_router(context_router)
-    # app.include_router(ops_router)
+    # ------------------------------------------------------------------ #
+    # Error handlers                                                       #
+    # ------------------------------------------------------------------ #
+    from app.api.errors import APIError, api_error_handler, unhandled_error_handler
+    app.add_exception_handler(APIError, api_error_handler)
+    app.add_exception_handler(Exception, unhandled_error_handler)
 
+    # ------------------------------------------------------------------ #
+    # Routers                                                              #
+    # ------------------------------------------------------------------ #
+    from app.api.ops import router as ops_router
+    app.include_router(ops_router)
+
+    # Context API added in Stage 7
+    # from app.api.context import router as context_router
+    # app.include_router(context_router)
+
+    # ------------------------------------------------------------------ #
+    # Internal endpoints                                                   #
+    # ------------------------------------------------------------------ #
     @app.get("/health", tags=["internal"])
     def health():
         return {"status": "ok"}
