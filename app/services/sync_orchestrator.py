@@ -71,7 +71,7 @@ class SyncOrchestrator:
                         ingested=result.records_ingested)
             sync_repo.fail_run(db, run, errors=result.errors)
         else:
-            # Full success — advance checkpoint
+            # Full success — advance checkpoint then reconcile
             if result.new_checkpoint:
                 sync_repo.set_checkpoint(db, source, result.new_checkpoint)
             sync_repo.complete_run(
@@ -86,6 +86,14 @@ class SyncOrchestrator:
                      ingested=result.records_ingested,
                      skipped=result.records_skipped,
                      new_checkpoint=result.new_checkpoint)
+            # Run reconciliation after every successful sync
+            try:
+                from app.reconciliation.engine import ReconciliationEngine
+                rec_engine = ReconciliationEngine(policy=self._policy)
+                n_findings = rec_engine.run(db, sync_run_id=run.id)
+                log.info("reconciliation_done", findings=n_findings)
+            except Exception as exc:  # noqa: BLE001 — reconciliation failure must not fail the sync
+                log.error("reconciliation_error", error_type=type(exc).__name__)
 
         db.refresh(run)
         return run

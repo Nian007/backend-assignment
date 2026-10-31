@@ -2,12 +2,16 @@ import uuid
 import structlog
 import structlog.contextvars
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.database import init_db
 from app.core.settings import get_settings
 from app.core.logging import configure_logging
+
+_UI_DIR = Path(__file__).parent / "ui"
 
 
 @asynccontextmanager
@@ -65,16 +69,24 @@ def create_app() -> FastAPI:
     from app.api.ops import router as ops_router
     app.include_router(ops_router)
 
-    # Context API added in Stage 7
-    # from app.api.context import router as context_router
-    # app.include_router(context_router)
+    # Context API (Stage 7)
+    from app.api.context import router as context_router
+    app.include_router(context_router)
 
     # ------------------------------------------------------------------ #
-    # Internal endpoints                                                   #
+    # Internal + UI                                                        #
     # ------------------------------------------------------------------ #
     @app.get("/health", tags=["internal"])
     def health():
         return {"status": "ok"}
+
+    # Serve the ops UI at /ui/
+    if _UI_DIR.exists():
+        @app.get("/ui", tags=["internal"], include_in_schema=False)
+        async def ui_redirect():
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/ui/index.html")
+        app.mount("/ui", StaticFiles(directory=str(_UI_DIR), html=True), name="ui")
 
     return app
 
