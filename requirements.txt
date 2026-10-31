@@ -1,0 +1,3 @@
+# Mock CRM only. Add your own dependencies in your project's packaging.
+fastapi>=0.110
+uvicorn>=0.29

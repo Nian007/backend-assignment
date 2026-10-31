@@ -1,0 +1,78 @@
+# Data policy for the design partner (simulated).
+# Enforce this in the service. Changing this file should change behavior without code changes
+# for the transforms listed under `transforms`.
+
+version: 3
+owner: chief-compliance-officer
+
+principals:
+  agent:
+    description: Pravar AI agents preparing advisor-facing material.
+    scopes: [context:read]
+  ops:
+    description: Pravar operations engineers and the firm's data stewards.
+    scopes: [context:read, findings:read, sync:run, sync:read]
+
+# Classification and handling per canonical field.
+#   store:   how the value may be persisted   (plain | encrypted | keyed_hash | never)
+#   log:     whether it may appear in logs     (allow | deny)
+#   egress:  what each principal receives      (a transform name, or "deny")
+fields:
+  person.tax_id:
+    classification: restricted
+    store: keyed_hash        # usable for matching, never recoverable
+    log: deny
+    egress: { agent: deny, ops: deny }
+
+  person.date_of_birth:
+    classification: confidential
+    store: encrypted
+    log: deny
+    egress: { agent: age_band, ops: age_band }
+
+  person.email:
+    classification: confidential
+    store: encrypted
+    log: deny
+    egress: { agent: mask_email, ops: plain }
+
+  person.phone:
+    classification: confidential
+    store: encrypted
+    log: deny
+    egress: { agent: deny, ops: last4 }
+
+  person.notes:
+    classification: confidential
+    store: encrypted
+    log: deny
+    egress: { agent: redact_free_text, ops: redact_free_text }
+
+  account.account_number:
+    classification: confidential
+    store: plain
+    log: last4
+    egress: { agent: last4, ops: last4 }
+
+  account.primary_tax_id:
+    classification: restricted
+    store: never
+    log: deny
+    egress: { agent: deny, ops: deny }
+
+transforms:
+  age_band:
+    bands: ["<25", "25-34", "35-44", "45-54", "55-64", "65-74", "75+"]
+    reference_date: today
+  mask_email: "first character of local part, then ***, then @domain"
+  last4: "**** followed by the final four digits"
+  redact_free_text:
+    patterns:
+      us_tax_id: '\b\d{3}-?\d{2}-?\d{4}\b'
+      account_number: '\b\d{4}[- ]?\d{4}\b'
+      email: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+    replacement: "[REDACTED:{pattern}]"
+
+retention:
+  sync_run_records_days: 400
+  raw_source_payloads_days: 30   # raw payloads must respect the field rules above

@@ -1,0 +1,25 @@
+{
+  "drop_id": "MC-20261008-01",
+  "custodian": "Meridian Custody (simulated)",
+  "as_of_date": "2026-10-08",
+  "delivered_at": "2026-10-09T02:14:00Z",
+  "snapshot_type": "FULL",
+  "supersedes": null,
+  "files": [
+    {
+      "name": "accounts.csv",
+      "sha256": "548043107a11f4817b570cd5367d8fe38f9940ea72512ed471715a3ff46e56b0",
+      "row_count": 9
+    },
+    {
+      "name": "balances.csv",
+      "sha256": "d74146f688296f8aa968a3a883e4e6e67935e62f572956282b734db2d7e8732d",
+      "row_count": 9
+    },
+    {
+      "name": "positions.csv",
+      "sha256": "388a4097b1144bbefe24273adf955b00a26d709dd9c5efcb5647965e14dc3fc1",
+      "row_count": 20
+    }
+  ]
+}

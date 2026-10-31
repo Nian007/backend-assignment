@@ -1,0 +1,169 @@
+[
+  {
+    "id": "C-2001",
+    "household_id": "H-1001",
+    "first_name": "Robert",
+    "last_name": "Chen",
+    "email": "robert.chen@example-mail.com",
+    "phone": "+1-415-555-0142",
+    "date_of_birth": "1968-04-19",
+    "tax_id": "123-45-6789",
+    "role": "Primary",
+    "custodian_account_numbers": [
+      "8812-4401"
+    ],
+    "notes": "Prefers morning calls. Reviewing 529 funding for granddaughter in Q4.",
+    "updated_at": "2026-10-01T09:15:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2002",
+    "household_id": "H-1001",
+    "first_name": "Bob",
+    "last_name": "Chen",
+    "email": "Robert.Chen@example-mail.com ",
+    "phone": "(415) 555-0142",
+    "date_of_birth": "1968-04-19",
+    "tax_id": "123456789",
+    "role": "Primary",
+    "custodian_account_numbers": [],
+    "notes": "Created from web form. Possible dup?",
+    "updated_at": "2026-10-01T09:15:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2003",
+    "household_id": "H-1001",
+    "first_name": "Linda",
+    "last_name": "Chen",
+    "email": "linda.chen@example-mail.com",
+    "phone": "+1-415-555-0187",
+    "date_of_birth": "1970-09-02",
+    "tax_id": "987-65-4320",
+    "role": "Spouse",
+    "custodian_account_numbers": [
+      "88124402"
+    ],
+    "notes": "Called re: Roth conversion. Read back her SSN 987-65-4320 to verify; acct 8812-4402.",
+    "updated_at": "2026-10-01T09:15:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2004",
+    "household_id": "H-1002",
+    "first_name": "Adaeze",
+    "last_name": "Okafor",
+    "email": "adaeze.okafor@example-mail.com",
+    "phone": "+1-646-555-0110",
+    "date_of_birth": "1981-01-27",
+    "tax_id": "234-56-7891",
+    "role": "Primary",
+    "custodian_account_numbers": [
+      "8812-4410",
+      "8812-4411"
+    ],
+    "notes": "Wants quarterly tax-loss harvesting review.",
+    "updated_at": "2026-10-01T09:15:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2005",
+    "household_id": "H-1002",
+    "first_name": "Emeka",
+    "last_name": "Okafor",
+    "email": "emeka.okafor@example-mail.com",
+    "phone": "+1-646-555-0111",
+    "date_of_birth": "1979-07-14",
+    "tax_id": "345-67-8912",
+    "role": "Spouse",
+    "custodian_account_numbers": [
+      "8812-4410"
+    ],
+    "notes": "",
+    "updated_at": "2026-10-01T09:15:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2006",
+    "household_id": "H-1003",
+    "first_name": "Marisol",
+    "last_name": "Alvarez-Reyes",
+    "email": "m.alvarezreyes@example-mail.com",
+    "phone": "+1-305-555-0133",
+    "date_of_birth": "1955-12-03",
+    "tax_id": "456-78-9123",
+    "role": "Trustee",
+    "custodian_account_numbers": [
+      "8812-4420"
+    ],
+    "notes": "Trust distributions quarterly. Successor trustee: son.",
+    "updated_at": "2026-09-28T12:00:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2007",
+    "household_id": "H-1004",
+    "first_name": "Thomas",
+    "last_name": "Whitfield",
+    "email": "t.whitfield@example-mail.com",
+    "phone": "+1-617-555-0199",
+    "date_of_birth": "1949-05-22",
+    "tax_id": "567-89-1234",
+    "role": "Primary",
+    "custodian_account_numbers": [
+      "8812-4430"
+    ],
+    "notes": "Transferring to another advisor per letter dated 10/03.",
+    "updated_at": "2026-10-05T17:40:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2008",
+    "household_id": "H-1005",
+    "first_name": "Kenji",
+    "last_name": "Sato",
+    "email": "kenji.sato@example-mail.com",
+    "phone": "+1-206-555-0175",
+    "date_of_birth": "1990-03-08",
+    "tax_id": "678-91-2345",
+    "role": "Primary",
+    "custodian_account_numbers": [
+      "8812-4440"
+    ],
+    "notes": "Opening a second account for RSU proceeds next week.",
+    "updated_at": "2026-10-02T08:00:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2009",
+    "household_id": "H-1006",
+    "first_name": "Aoife",
+    "last_name": "Brennan",
+    "email": "aoife.brennan@example-mail.com",
+    "phone": "+1-312-555-0164",
+    "date_of_birth": "1986-11-30",
+    "tax_id": "789-12-3456",
+    "role": "Primary",
+    "custodian_account_numbers": [
+      "8812 4450"
+    ],
+    "notes": "",
+    "updated_at": "2026-10-02T08:00:00Z",
+    "deleted_at": null
+  },
+  {
+    "id": "C-2010",
+    "household_id": "H-9999",
+    "first_name": "Grace",
+    "last_name": "Lindqvist",
+    "email": "grace.l@example-mail.com",
+    "phone": "+1-512-555-0120",
+    "date_of_birth": "1993-06-17",
+    "tax_id": "891-23-4567",
+    "role": "Primary",
+    "custodian_account_numbers": [],
+    "notes": "Prospect converted from Win pipeline.",
+    "updated_at": "2026-10-02T08:00:00Z",
+    "deleted_at": null
+  }
+]
