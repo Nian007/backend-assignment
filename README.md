@@ -40,13 +40,44 @@ Key components:
 ## Prerequisites
 
 - Python 3.11+ (tested on 3.14)
+- Node.js (for the mock CRM server)
 - `pip install -r requirements.txt`
 
-## Windows PowerShell Setup
+## Setup
+
+### macOS / Linux
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Nian007/backend-assignment.git
+cd backend-assignment
+
+# 2. Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Generate required encryption keys
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Copy the output — use it as DATA_ENCRYPTION_KEY below
+
+# 5. Create a .env file (never commit this)
+cat > .env <<'EOF'
+DATA_ENCRYPTION_KEY=<paste_key_here>
+HMAC_SECRET_KEY=<any_32plus_char_random_string>
+AGENT_API_KEY=agent-key-local-001
+OPS_API_KEY=ops-key-local-001
+EOF
+```
+
+### Windows PowerShell
 
 ```powershell
 # 1. Clone the repository
-cd F:\pravar-backend-assignment
+git clone https://github.com/Nian007/backend-assignment.git
+cd backend-assignment
 
 # 2. Create and activate virtual environment
 python -m venv .venv
@@ -83,6 +114,16 @@ OPS_API_KEY=ops-key-local-001
 
 ## Start the Mock CRM
 
+The mock CRM is a Python Flask server. Start it in a separate terminal before running syncs.
+
+**macOS / Linux**
+```bash
+cd mock_crm
+python3 server.py
+# Listens on http://localhost:8081
+```
+
+**Windows PowerShell**
 ```powershell
 cd mock_crm
 python server.py
@@ -91,25 +132,50 @@ python server.py
 
 ## Run the Service
 
+**macOS / Linux**
+```bash
+# Export env vars (or use a .env file with python-dotenv)
+export DATA_ENCRYPTION_KEY="<your_key>"
+export HMAC_SECRET_KEY="<your_hmac_secret>"
+export AGENT_API_KEY="agent-key-local-001"
+export OPS_API_KEY="ops-key-local-001"
+
+uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
+```
+
+**Windows PowerShell**
 ```powershell
-# Option A: using uvicorn directly
 $env:DATA_ENCRYPTION_KEY = "<your_key>"
 $env:HMAC_SECRET_KEY = "<your_hmac_secret>"
 $env:AGENT_API_KEY = "agent-key-local-001"
 $env:OPS_API_KEY = "ops-key-local-001"
-uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
 
-# Option B: load from .env using python-dotenv
-python -c "from dotenv import load_dotenv; load_dotenv()"
 uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
 ```
 
 The service starts at `http://127.0.0.1:8090`.  
-The ops UI is at `http://127.0.0.1:8090/ui/`.  
+The demo console is at `http://127.0.0.1:8090/ui/`.  
+The architecture deep-dive is at `http://127.0.0.1:8090/architecture`.  
 API docs are at `http://127.0.0.1:8090/docs`.
 
 ## Trigger Synchronization
 
+**macOS / Linux**
+```bash
+# Trigger CRM sync
+curl -X POST http://127.0.0.1:8090/v1/ops/sync/crm \
+  -H "Authorization: Bearer ops-key-local-001"
+
+# Trigger custodian sync
+curl -X POST http://127.0.0.1:8090/v1/ops/sync/custodian \
+  -H "Authorization: Bearer ops-key-local-001"
+
+# List recent sync runs
+curl http://127.0.0.1:8090/v1/ops/sync-runs \
+  -H "Authorization: Bearer ops-key-local-001"
+```
+
+**Windows PowerShell**
 ```powershell
 # Trigger CRM sync
 curl.exe -X POST http://127.0.0.1:8090/v1/ops/sync/crm `
@@ -128,6 +194,14 @@ curl.exe http://127.0.0.1:8090/v1/ops/sync-runs `
 
 ### Agent — get household context
 
+**macOS / Linux**
+```bash
+curl http://127.0.0.1:8090/v1/households/H-1001/context \
+  -H "Authorization: Bearer agent-key-local-001" \
+  -H "X-Correlation-ID: my-trace-001"
+```
+
+**Windows PowerShell**
 ```powershell
 curl.exe http://127.0.0.1:8090/v1/households/H-1001/context `
   -H "Authorization: Bearer agent-key-local-001" `
@@ -136,6 +210,13 @@ curl.exe http://127.0.0.1:8090/v1/households/H-1001/context `
 
 ### Ops — get household context (includes finding detail)
 
+**macOS / Linux**
+```bash
+curl http://127.0.0.1:8090/v1/households/H-1001/context \
+  -H "Authorization: Bearer ops-key-local-001"
+```
+
+**Windows PowerShell**
 ```powershell
 curl.exe http://127.0.0.1:8090/v1/households/H-1001/context `
   -H "Authorization: Bearer ops-key-local-001"
@@ -143,6 +224,13 @@ curl.exe http://127.0.0.1:8090/v1/households/H-1001/context `
 
 ### Ops — get a specific sync run
 
+**macOS / Linux**
+```bash
+curl http://127.0.0.1:8090/v1/ops/sync-runs/<run_id> \
+  -H "Authorization: Bearer ops-key-local-001"
+```
+
+**Windows PowerShell**
 ```powershell
 curl.exe http://127.0.0.1:8090/v1/ops/sync-runs/<run_id> `
   -H "Authorization: Bearer ops-key-local-001"
@@ -150,17 +238,29 @@ curl.exe http://127.0.0.1:8090/v1/ops/sync-runs/<run_id> `
 
 ### Health check
 
-```powershell
-curl.exe http://127.0.0.1:8090/health
+```bash
+curl http://127.0.0.1:8090/health
 ```
 
 ## Run Tests
 
+**macOS / Linux**
+```bash
+export DATA_ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+export HMAC_SECRET_KEY="deadbeefdeadbeefdeadbeefdeadbeef"
+export AGENT_API_KEY="agent-key-local-001"
+export OPS_API_KEY="ops-key-local-001"
+
+python3 -m pytest tests/ -v
+```
+
+**Windows PowerShell**
 ```powershell
 $env:DATA_ENCRYPTION_KEY = (python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 $env:HMAC_SECRET_KEY = "deadbeefdeadbeefdeadbeefdeadbeef"
 $env:AGENT_API_KEY = "agent-key-local-001"
 $env:OPS_API_KEY = "ops-key-local-001"
+
 python -m pytest tests/ -v
 ```
 
