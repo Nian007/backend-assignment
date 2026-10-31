@@ -4,3 +4,6 @@ __pycache__/
 *.db
 .env
 .idea/
+progress.md
+*.db-shm
+*.db-wal
