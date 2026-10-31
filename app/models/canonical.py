@@ -47,6 +47,7 @@ class Person(Base):
     phone_enc = Column(Text, nullable=True)        # Fernet-encrypted
     dob_enc = Column(Text, nullable=True)          # Fernet-encrypted
     notes_enc = Column(Text, nullable=True)        # Fernet-encrypted; redact_free_text applied first
+    crm_account_refs = Column(JSON, nullable=True) # normalized NNNN-NNNN refs from CRM custodian_account_numbers
     ingested_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
@@ -100,6 +101,7 @@ class CustodianDrop(Base):
     snapshot_type = Column(String, nullable=False, default="FULL")
     supersedes = Column(String, nullable=True)  # drop_id of the drop this corrects
     status = Column(String, nullable=False, default="pending")
+    payload_hash = Column(String, nullable=True)  # combined hash of manifest file SHA-256s
     ingested_at = Column(DateTime, nullable=False)
 
     positions = relationship("Position", back_populates="drop")
