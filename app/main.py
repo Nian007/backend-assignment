@@ -80,12 +80,18 @@ def create_app() -> FastAPI:
     def health():
         return {"status": "ok"}
 
-    # Serve the ops UI at /ui/
+    # Serve the ops UI at /ui/  and architecture at /architecture
     if _UI_DIR.exists():
         @app.get("/ui", tags=["internal"], include_in_schema=False)
         async def ui_redirect():
             from fastapi.responses import RedirectResponse
             return RedirectResponse(url="/ui/index.html")
+
+        @app.get("/architecture", tags=["internal"], include_in_schema=False)
+        async def arch_redirect():
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/ui/architecture.html")
+
         app.mount("/ui", StaticFiles(directory=str(_UI_DIR), html=True), name="ui")
 
     return app

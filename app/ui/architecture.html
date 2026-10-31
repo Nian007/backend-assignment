@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Household Context Service — Architecture</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #141720;
+    --border: #2d3141; --accent: #6c8ef5; --accent2: #5bd4a4;
+    --warn: #f5a623; --danger: #f56c6c; --purple: #b06af5;
+    --text: #e2e6f0; --text-muted: #7b82a0; --radius: 10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0; padding: 0 24px; height: 54px;
+    overflow-x: auto;
+  }
+  nav .brand { font-weight: 700; font-size: 15px; margin-right: 28px; white-space: nowrap; color: var(--accent); }
+  nav a {
+    color: var(--text-muted); text-decoration: none; font-size: 13px;
+    padding: 6px 12px; border-radius: 6px; white-space: nowrap; transition: .15s;
+  }
+  nav a:hover, nav a.active { color: var(--text); background: rgba(108,142,245,.12); }
+  nav .spacer { flex: 1; }
+  nav .back-btn {
+    font-size: 12px; color: var(--text-muted); padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 6px; text-decoration: none;
+    transition: .15s;
+  }
+  nav .back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .hero {
+    background: linear-gradient(135deg, #12162a 0%, #0f1117 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 56px 24px 48px;
+    text-align: center;
+  }
+  .hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px;
+    background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { color: var(--text-muted); max-width: 640px; margin: 0 auto; font-size: 15px; }
+
+  .pill { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 100px; margin: 3px; font-weight: 600; }
+  .pill-blue { background: #1a2a5e; color: var(--accent); }
+  .pill-green { background: #102a1e; color: var(--accent2); }
+  .pill-purple { background: #2a1a4e; color: var(--purple); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 80px; }
+
+  section { margin-bottom: 64px; scroll-margin-top: 70px; }
+  section h2 {
+    font-size: 22px; font-weight: 700; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section h2 .num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  section .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 20px;
+  }
+  .card h3 { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .card p { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+  .card ul { padding-left: 18px; }
+  .card li { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+  .card li strong { color: var(--text); }
+
+  .diagram-wrap {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+    overflow-x: auto; margin-bottom: 20px;
+  }
+  .diagram-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+
+  .mermaid { display: flex; justify-content: center; }
+  .mermaid svg { max-width: 100%; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } .grid-3 { grid-template-columns: 1fr; } }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { color: var(--text-muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #181b27; vertical-align: top; }
+  td code { font-family: monospace; font-size: 11px; background: #12151f; padding: 2px 6px; border-radius: 4px; color: var(--accent2); }
+
+  .severity { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .sev-high { background: #3a2010; color: #f5a623; }
+  .sev-medium { background: #2d2a10; color: #f5e023; }
+  .sev-low { background: #102a1e; color: #5bd4a4; }
+  .sev-critical { background: #3a1015; color: #f56c6c; }
+
+  .tradeoff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .tradeoff-grid { grid-template-columns: 1fr; } }
+  .tradeoff-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .tradeoff-card .decision { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .tradeoff-card .rationale { font-size: 12px; color: var(--text-muted); }
+  .tradeoff-card .chosen { font-size: 11px; color: var(--accent2); margin-top: 6px; font-weight: 600; }
+
+  footer { text-align: center; padding: 32px; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">⬡ Household Context Service</span>
+  <a href="#hld">HLD</a>
+  <a href="#components">Components</a>
+  <a href="#domain">Domain Model</a>
+  <a href="#sequences">Sequences</a>
+  <a href="#policy">Data Policy</a>
+  <a href="#reconciliation">Reconciliation</a>
+  <a href="#tradeoffs">Trade-offs</a>
+  <div class="spacer"></div>
+  <a href="/ui/" class="back-btn">← Live Demo</a>
+</nav>
+
+<div class="hero">
+  <h1>Architecture Deep Dive</h1>
+  <p>A production-minded canonical household context service bridging two independent systems of record and Pravar's AI agent runtime.</p>
+  <div style="margin-top:16px;">
+    <span class="pill pill-blue">FastAPI</span>
+    <span class="pill pill-blue">SQLAlchemy</span>
+    <span class="pill pill-blue">SQLite WAL</span>
+    <span class="pill pill-green">Python 3.11+</span>
+    <span class="pill pill-green">96 Tests Passing</span>
+    <span class="pill pill-purple">YAML-Driven Policy</span>
+    <span class="pill pill-purple">Fernet Encryption</span>
+  </div>
+</div>
+
+<main>
+
+<!-- ───────────────────── 1. HLD ───────────────────── -->
+<section id="hld">
+  <h2><span class="num">1</span> High-Level Architecture</h2>
+  <p class="sub">Modular monolith — two connectors, one canonical store, one policy engine, one API.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">System Context Diagram</div>
+    <div class="mermaid">
+graph LR
+    CRM["🏦 Ledgerline CRM\nREST API :8081\nBearer Auth\nCursor Pagination"]:::src
+    CSV["📁 Meridian Custody\nCSV File Drops\nManifest + SHA-256"]:::src
+
+    subgraph SVC["Household Context Service"]
+        direction TB
+        CRMC["CRM Connector\nIncremental · Retry · Checkpoint"]:::conn
+        CUSC["Custodian Connector\nSupersedes Chain · Atomic Ingest"]:::conn
+        ORCH["Sync Orchestrator\nRun Lifecycle · Checkpoint Guard"]:::svc
+        POL["Policy Engine\nYAML-Driven · Store/Log/Egress"]:::pol
+        DB[("Canonical Store\nSQLite WAL\n10 Tables")]:::db
+        REC["Reconciliation Engine\n6 Rules · Findings"]:::svc
+        ASM["Context Assembler\nPrincipal-Filtered Egress"]:::svc
+        API["FastAPI Routes\nAuth · Correlation IDs"]:::api
+    end
+
+    AGT["🤖 AI Agent\nagent principal\ncontext:read"]:::consumer
+    OPS["🛠 Ops Engineer\nops principal\nall scopes"]:::consumer
+
+    CRM --> CRMC
+    CSV --> CUSC
+    CRMC --> ORCH
+    CUSC --> ORCH
+    ORCH --> POL
+    POL --> DB
+    DB --> REC
+    REC --> DB
+    DB --> ASM
+    ASM --> POL
+    POL --> API
+    API --> AGT
+    API --> OPS
+
+    classDef src fill:#1a2035,stroke:#6c8ef5,color:#a0b4f5
+    classDef conn fill:#1a2535,stroke:#5bd4a4,color:#8ae8cc
+    classDef svc fill:#1a1a35,stroke:#b06af5,color:#c090f5
+    classDef pol fill:#2a1a20,stroke:#f5a623,color:#f5c073
+    classDef db fill:#12151f,stroke:#f56c6c,color:#f59090
+    classDef api fill:#1a2a1a,stroke:#5bd4a4,color:#8ae8cc
+    classDef consumer fill:#0f1117,stroke:#7b82a0,color:#a0a8c0
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Source Systems</h3>
+      <ul>
+        <li><strong>Ledgerline CRM</strong> — households, contacts, relationships, risk profiles, soft deletes. REST API with cursor pagination, 429/503 errors, one-second timestamp precision.</li>
+        <li><strong>Meridian Custody</strong> — accounts, positions, balances via CSV file drops. Each drop has a manifest with SHA-256 hashes, row counts, and a supersedes chain for corrections.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Design Principles</h3>
+      <ul>
+        <li><strong>Source-agnostic canonical model</strong> — Pravar-owned UUIDs, never source IDs as PKs.</li>
+        <li><strong>Policy-first</strong> — every sensitive field controlled by <code>data_policy.yaml</code>, not route handlers.</li>
+        <li><strong>No silent correction</strong> — source anomalies are surfaced as findings, not silently fixed.</li>
+        <li><strong>Idempotent everywhere</strong> — replaying a sync or re-ingesting a drop is always safe.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────── 2. COMPONENTS ───────────────────── -->
+<section id="components">
+  <h2><span class="num">2</span> Component Responsibilities</h2>
+  <p class="sub">Each component has exactly one job. Adding a third data source requires one new file and one registry entry.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Component & Layer Diagram</div>
+    <div class="mermaid">
+graph TB
+    subgraph API["API Layer — app/api/"]
+        AUTH["auth.py\nBearer → Principal\nrequire_scope()"]
+        CTX["context.py\nGET /v1/households/id/context"]
+        OPS2["ops.py\nPOST sync, GET runs"]
+        ERR["errors.py\nAPIError → exact envelope\n401 403 404 503"]
+    end
+
+    subgraph CONN["Connectors — app/connectors/"]
+        BASE["base.py\nConnectorBase Protocol\nSyncResult dataclass"]
+        CRM2["crm.py\nLedgerline CRM\nPagination · Retry · Checkpoint"]
+        CUST["custodian.py\nMeridian Custody\nManifest · SHA-256 · Supersedes"]
+        REG["__init__.py\nCONNECTOR_FACTORIES dict"]
+    end
+
+    subgraph SERV["Services — app/services/"]
+        SYNC["sync_orchestrator.py\nRun lifecycle\nCheckpoint guard\nReconciliation trigger"]
+        ASSM["context_assembler.py\nHousehold assembly\nPolicy egress\nDQ status"]
+    end
+
+    subgraph REC2["Reconciliation — app/reconciliation/"]
+        ENG["engine.py\nRun all rules\nAtomic commit"]
+        RULES["rules.py\n6 rule functions\nFindings emission"]
+    end
+
+    subgraph POL2["Policy — app/policy/"]
+        PE["engine.py\nhash_tax_id · encrypt · decrypt\napply_egress · redact_free_text"]
+    end
+
+    subgraph REPO["Repositories — app/repositories/"]
+        direction LR
+        HHR["households.py"] --- PERR["persons.py"]
+        PERR --- ACCR["accounts.py"]
+        ACCR --- POSR["positions.py"]
+        FINDR["findings.py"] --- SYNR["sync.py"]
+        SYNR --- DROPR["custodian_drops.py"]
+    end
+
+    subgraph CORE["Core — app/core/"]
+        SET["settings.py\nPydantic Settings\nRequired: ENC_KEY HMAC_KEY"]
+        LOG["logging.py\nstructlog + PII scrubber"]
+        DB2["database.py\nSQLite WAL · FK enforcement"]
+        RET["retry.py\nExponential backoff\nRetry-After support"]
+    end
+
+    API --> SERV
+    API --> REPO
+    SERV --> CONN
+    SERV --> REC2
+    CONN --> POL2
+    CONN --> REPO
+    REC2 --> REPO
+    SERV --> POL2
+    ASSM --> POL2
+    ASSM --> REPO
+    REPO --> CORE
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Connector Contract — Adding a Third Source</h3>
+    <p>Any connector must implement two things:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>What to implement</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>source_name: ClassVar[str]</code></td><td>Unique string identifier</td><td>e.g. <code>"schwab_custody"</code></td></tr>
+          <tr><td><code>run(run_id, db, checkpoint) → SyncResult</code></td><td>Full sync logic</td><td>Must be idempotent; advance new_checkpoint only on full success</td></tr>
+          <tr><td>Register in <code>CONNECTOR_FACTORIES</code></td><td>One dict entry</td><td>Zero changes to orchestrator or API</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────── 3. DOMAIN MODEL ───────────────────── -->
+<section id="domain">
+  <h2><span class="num">3</span> Canonical Domain Model</h2>
+  <p class="sub">10 SQLAlchemy ORM tables. Pravar-owned UUID primary keys (never source IDs). Monetary values stored as exact Decimal strings.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Entity-Relationship Diagram</div>
+    <div class="mermaid">
+erDiagram
+    Household ||--o{ Person : "has"
+    Household ||--o{ Account : "contains"
+    Person ||--o{ Ownership : "holds"
+    Account ||--o{ Ownership : "owned via"
+    Account ||--o{ Position : "has positions in"
+    Account ||--o{ Valuation : "has valuations from"
+    CustodianDrop ||--o{ Position : "sourced from"
+    CustodianDrop ||--o{ Valuation : "sourced from"
+    SyncRun ||--o{ Finding : "produced"
+
+    Household {
+        string id PK "hh_uuid"
+        string source_id UK "H-1001"
+        string name
+        string primary_advisor
+        string risk_profile
+        string service_tier
+        string status "active|deleted"
+        datetime deleted_at "nullable"
+    }
+
+    Person {
+        string id PK "per_uuid"
+        string household_id FK
+        string source_id UK "C-2001"
+        string first_name
+        string last_name
+        string role
+        string tax_id_hash "HMAC-SHA256 only"
+        text email_enc "Fernet"
+        text phone_enc "Fernet"
+        text dob_enc "Fernet"
+        text notes_enc "Fernet + redacted"
+        json crm_account_refs "NNNN-NNNN[]"
+    }
+
+    Account {
+        string id PK "acc_uuid"
+        string household_id FK "nullable"
+        string account_number UK "NNNN-NNNN"
+        string registration_type
+        string status "OPEN|CLOSED"
+        string base_currency "ISO 4217"
+        date open_date
+    }
+
+    Position {
+        string id PK "pos_uuid"
+        string account_id FK
+        string drop_id FK
+        date as_of_date
+        string symbol "uppercased"
+        string symbol_raw "original"
+        string cusip "nullable"
+        string asset_class
+        string quantity "Decimal"
+        string price "Decimal"
+        string market_value "Decimal"
+    }
+
+    Valuation {
+        string id PK "val_uuid"
+        string account_id FK
+        string drop_id FK
+        date as_of_date
+        string total_market_value "Decimal"
+        string cash_balance "Decimal"
+        string currency "ISO 4217"
+    }
+
+    CustodianDrop {
+        string id PK "drop_uuid"
+        string drop_id UK "MC-20261008-02"
+        date as_of_date
+        datetime delivered_at
+        string snapshot_type "FULL"
+        string supersedes "drop_id nullable"
+        string status "pending|ingested"
+        string payload_hash "hash-of-hashes"
+    }
+
+    Finding {
+        string id PK "fnd_uuid"
+        string code "DUPLICATE_POSITION"
+        string severity "high|medium|low|critical"
+        string message
+        string entity_type
+        string entity_id
+        string sync_run_id FK
+        text expected_value
+        text observed_value
+    }
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>Identity Rules</h3>
+      <ul>
+        <li><strong>Canonical IDs</strong> — <code>hh_</code>, <code>per_</code>, <code>acc_</code> prefixed UUID4s. Source IDs are stored as attributes only.</li>
+        <li><strong>Account normalisation</strong> — strip spaces/hyphens, require 8 digits, format as <code>NNNN-NNNN</code>.</li>
+        <li><strong>No auto-merge</strong> — duplicate persons are flagged, not merged.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>PII Storage</h3>
+      <ul>
+        <li><code>tax_id</code> → HMAC-SHA256 keyed hash. Never stored raw.</li>
+        <li><code>email, phone, dob, notes</code> → Fernet symmetric encryption. Decrypted only at egress.</li>
+        <li><code>primary_tax_id</code> from CSV → read, immediately discarded. Never reaches ORM.</li>
+        <li>Notes: <code>redact_free_text()</code> applied <em>before</em> encrypting.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Monetary Values</h3>
+      <ul>
+        <li>All amounts stored as exact <strong>Decimal strings</strong> in SQLite Text columns.</li>
+        <li><code>_parse_decimal()</code> strips <code>$</code> and commas before conversion.</li>
+        <li>Totals computed with <code>Decimal</code> — never <code>float</code>.</li>
+        <li>Currency always explicit ISO 4217 (USD).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────── 4. SEQUENCES ───────────────────── -->
+<section id="sequences">
+  <h2><span class="num">4</span> Sequence Diagrams</h2>
+  <p class="sub">Three critical flows: incremental CRM sync, custodian drop ingest, and agent context request.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Sequence 1 — CRM Incremental Sync</div>
+    <div class="mermaid">
+sequenceDiagram
+    participant Ops as Ops / Cron
+    participant ORCH as SyncOrchestrator
+    participant CRM as CRM Connector
+    participant API as Ledgerline CRM API
+    participant POL as PolicyEngine
+    participant DB as Canonical DB
+    participant REC as ReconciliationEngine
+
+    Ops->>ORCH: POST /v1/ops/sync/crm
+    ORCH->>DB: create_run(source, run_type)
+    DB-->>ORCH: run_id (committed immediately)
+    ORCH->>DB: get_checkpoint("ledgerline_crm")
+    DB-->>ORCH: "2026-10-05T17:40:00Z" (or null)
+
+    note over ORCH: run_type = incremental if checkpoint exists
+
+    ORCH->>CRM: run(run_id, db, checkpoint)
+
+    loop Cursor pagination
+        CRM->>API: GET /v2/households?updated_since=...&include_deleted=true&cursor=...
+        alt 429 Too Many Requests
+            API-->>CRM: 429 Retry-After: 5
+            note over CRM: sleep(retry_after); retry with backoff
+        else 503
+            API-->>CRM: 503
+            note over CRM: exponential backoff, max 5 attempts
+        end
+        API-->>CRM: {data: [...], meta: {next_cursor}}
+        loop Each household
+            CRM->>POL: (no PII in household — plain store)
+            CRM->>DB: upsert(source_id, name, advisor, ...)
+        end
+        note over CRM: Track max(updated_at) across all pages
+    end
+
+    loop Contacts pagination (same pattern)
+        CRM->>API: GET /v2/contacts?updated_since=...&include_deleted=true
+        loop Each contact
+            CRM->>POL: hash_tax_id(raw) → hmac
+            CRM->>POL: encrypt(email, phone, dob, notes)
+            CRM->>POL: redact_free_text(notes) before encrypt
+            CRM->>DB: upsert(source_id, household_id, ..., tax_id_hash, email_enc)
+        end
+    end
+
+    CRM->>DB: link_accounts_to_households()
+    CRM-->>ORCH: SyncResult(records_ingested=16, new_checkpoint="2026-10-05...")
+
+    alt No errors
+        ORCH->>DB: set_checkpoint("2026-10-05T17:40:00Z")
+        ORCH->>DB: complete_run(ingested, skipped)
+        ORCH->>REC: run(db, sync_run_id)
+        REC->>DB: query all rules → emit Findings
+        REC->>DB: commit findings atomically
+    else Errors present
+        ORCH->>DB: fail_run(errors) — checkpoint NOT advanced
+        note over ORCH: Prior checkpoint preserved for safe replay
+    end
+
+    ORCH-->>Ops: SyncRunOut (run_id, status, ingested, checkpoint)
+    </div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Sequence 2 — Custodian Drop Ingest</div>
+    <div class="mermaid">
+sequenceDiagram
+    participant ORCH as SyncOrchestrator
+    participant CUST as CustodianConnector
+    participant FS as File System
+    participant DB as Canonical DB
+
+    ORCH->>CUST: run(run_id, db, checkpoint)
+    CUST->>FS: scan custodian_drops/ for manifest.json files
+
+    loop Each drop folder
+        CUST->>FS: read manifest.json
+        note over CUST: Validate: drop_id, as_of_date, supersedes, files[]
+
+        CUST->>DB: get_by_drop_id(drop_id)
+        alt Already ingested (same payload_hash)
+            note over CUST: No-op — skip, records_skipped++
+        else Same drop_id, different payload_hash
+            note over CUST: CONFLICT — reject, emit error
+        else New drop
+            CUST->>FS: SHA-256 each file; compare to manifest hashes
+            CUST->>FS: row count each CSV; compare to manifest counts
+
+            alt Hash or count mismatch
+                note over CUST: Reject entire drop atomically\ndb.rollback()
+            else All checks pass
+                DB->>DB: begin transaction
+                CUST->>DB: create CustodianDrop(status=pending)
+                CUST->>FS: read accounts.csv
+                loop Each account row
+                    note over CUST: primary_tax_id → read, discard immediately
+                    CUST->>DB: upsert Account(account_number, status, ...)
+                end
+                CUST->>DB: db.flush() ← materialise account IDs for FK
+
+                CUST->>FS: read positions.csv
+                loop Each position row
+                    note over CUST: symbol.upper() → symbol\nparse_decimal($, comma)
+                    CUST->>DB: insert Position(account_id FK, drop_id FK)
+                end
+
+                CUST->>FS: read balances.csv
+                loop Each balance row
+                    CUST->>DB: insert Valuation(account_id FK, drop_id FK)
+                end
+
+                CUST->>DB: set_status(drop, "ingested")
+                DB->>DB: commit transaction
+            end
+        end
+    end
+
+    CUST->>DB: link_accounts_to_households()
+    note over CUST: Effective snapshot = supersedes chain,\nnot delivery timestamp
+
+    CUST-->>ORCH: SyncResult(records_ingested=114)
+    </div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Sequence 3 — Agent Context Request</div>
+    <div class="mermaid">
+sequenceDiagram
+    participant AGT as AI Agent
+    participant MW as Correlation Middleware
+    participant AUTH2 as Auth Dependency
+    participant CTX2 as Context Route
+    participant ASSM as ContextAssembler
+    participant POL3 as PolicyEngine
+    participant DB2 as Canonical DB
+
+    AGT->>MW: GET /v1/households/H-1001/context\nAuthorization: Bearer agent-key-local-001\nX-Correlation-ID: my-trace-001
+
+    MW->>MW: extract/generate correlation_id
+    MW->>MW: bind_contextvars(correlation_id)
+
+    MW->>AUTH2: Depends(require_scope("context:read"))
+    AUTH2->>AUTH2: validate Bearer token → Principal(name="agent", scopes={"context:read"})
+
+    AUTH2->>CTX2: principal, db
+
+    CTX2->>DB2: has_any_successful_run()
+    alt No successful run ever
+        CTX2-->>AGT: 503 context_unavailable
+    end
+
+    CTX2->>ASSM: build(household_id="H-1001", principal, db)
+
+    ASSM->>DB2: Household.filter(source_id="H-1001")
+    alt Not found
+        ASSM-->>AGT: 404 household_not_found
+    end
+
+    ASSM->>DB2: Person.filter(household_id=hh.id)
+    loop Each person
+        ASSM->>POL3: decrypt(email_enc) → raw_email
+        ASSM->>POL3: apply_egress("person.email", raw, "agent") → "r***@example.com"
+        ASSM->>POL3: apply_egress("person.phone", raw, "agent") → OMIT
+        ASSM->>POL3: apply_egress("person.date_of_birth", raw, "agent") → "55-64"
+        note over ASSM: OMIT sentinel → field excluded from JSON
+    end
+
+    ASSM->>DB2: Account.filter(household_id=hh.id)
+    loop Each account
+        ASSM->>POL3: apply_egress("account.account_number", "8812-4401", "agent") → "****4401"
+        ASSM->>DB2: latest Valuation from effective drops
+        ASSM->>DB2: Positions from that drop
+    end
+
+    ASSM->>DB2: Finding.filter(entity_id IN [hh.id, ...account_ids])
+    ASSM->>ASSM: compute data_quality.status\nfrom max finding severity
+    note over ASSM: agent principal → finding.detail OMITTED\nops principal → finding.detail INCLUDED
+
+    ASSM-->>CTX2: response dict
+
+    CTX2-->>MW: JSONResponse
+    MW-->>AGT: 200 + X-Correlation-ID: my-trace-001\n{household, members, accounts, totals, freshness, data_quality, correlation_id}
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────── 5. DATA POLICY ───────────────────── -->
+<section id="policy">
+  <h2><span class="num">5</span> Data Policy Enforcement</h2>
+  <p class="sub">Three enforcement layers: store time, log time, egress time. All rules driven by <code>contracts/data_policy.yaml</code>.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Policy Enforcement Points</div>
+    <div class="mermaid">
+flowchart LR
+    SRC["Source Data\n(CRM JSON / CSV)"] --> INGEST
+
+    subgraph INGEST["Ingestion — Store Layer"]
+        direction TB
+        H1["tax_id → hash_tax_id()\nHMAC-SHA256 keyed\nnever stored raw"]
+        H2["email, phone, dob, notes\n→ encrypt()\nFernet symmetric"]
+        H3["notes → redact_free_text()\nbefore encryption"]
+        H4["primary_tax_id from CSV\n→ read, immediately discard\nnever reaches ORM"]
+    end
+
+    subgraph LOG["Logging — Log Layer"]
+        direction TB
+        L1["structlog PII scrubber\nprocessor removes:\ntax_id, dob, email, phone\nnotes, ssn, primary_tax_id"]
+        L2["account_number\nlogged as ****NNNN only"]
+    end
+
+    subgraph EGRESS["API Egress — Per-Principal"]
+        direction TB
+        E1["tax_id → OMIT\n(both principals)"]
+        E2["dob → age_band()\n'55-64'"]
+        E3["email → agent: mask_email()\nops: plain"]
+        E4["phone → agent: OMIT\nops: last4()"]
+        E5["notes → redact_free_text()\nboth principals"]
+        E6["account_number → last4()\nboth principals"]
+        E7["finding.detail → ops only\nagent never receives it"]
+    end
+
+    INGEST --> DB2[("Canonical Store\nNo raw PII")]
+    DB2 --> LOG
+    DB2 --> EGRESS
+    EGRESS --> AGT2["Agent\nmasked email\nno phone\nage band"]
+    EGRESS --> OPS2["Ops\nplain email\nlast4 phone\nfinding detail"]
+    </div>
+  </div>
+
+  <div class="table-wrap card" style="padding:0;">
+    <table>
+      <thead><tr><th>Field</th><th>Store</th><th>Log</th><th>Agent egress</th><th>Ops egress</th></tr></thead>
+      <tbody>
+        <tr><td><code>person.tax_id</code></td><td>HMAC hash</td><td>DENY</td><td>OMIT</td><td>OMIT</td></tr>
+        <tr><td><code>person.date_of_birth</code></td><td>Fernet encrypted</td><td>DENY</td><td>age_band</td><td>age_band</td></tr>
+        <tr><td><code>person.email</code></td><td>Fernet encrypted</td><td>DENY</td><td>mask_email</td><td>plain</td></tr>
+        <tr><td><code>person.phone</code></td><td>Fernet encrypted</td><td>DENY</td><td>OMIT</td><td>last4</td></tr>
+        <tr><td><code>person.notes</code></td><td>Fernet + redacted</td><td>DENY</td><td>redact_free_text</td><td>redact_free_text</td></tr>
+        <tr><td><code>account.account_number</code></td><td>plain</td><td>last4 only</td><td>last4</td><td>last4</td></tr>
+        <tr><td><code>account.primary_tax_id</code></td><td>NEVER STORED</td><td>DENY</td><td>OMIT</td><td>OMIT</td></tr>
+        <tr><td><code>finding.detail</code></td><td>plain</td><td>allowed</td><td>OMIT</td><td>included</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────────────────── 6. RECONCILIATION ───────────────────── -->
+<section id="reconciliation">
+  <h2><span class="num">6</span> Reconciliation Engine</h2>
+  <p class="sub">Six independent rule functions run post-sync. Each emits structured findings. Reconciliation failure never fails the sync.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-label">Reconciliation Flow</div>
+    <div class="mermaid">
+flowchart TD
+    SYNC["Sync Run Completes\n(status = success)"] --> REC
+    subgraph REC["ReconciliationEngine.run()"]
+        R1["rule_possible_duplicate_persons\nSame household + matching HMAC hash\n+ similar name → POSSIBLE_DUPLICATE_PERSON"]
+        R2["rule_missing_crm_household\nPerson.household_id = NULL\n→ MISSING_CRM_HOUSEHOLD"]
+        R3["rule_unlinked_accounts\nAccount.household_id = NULL\n→ UNLINKED_ACCOUNT"]
+        R4["rule_deleted_household_lifecycle\nDeleted HH + OPEN account\n→ DELETED_HOUSEHOLD_OPEN_ACCOUNT"]
+        R5["rule_duplicate_positions\nSame (account, date, symbol, cusip)\nappears &gt; 1× → DUPLICATE_POSITION"]
+        R6["rule_position_balance_mismatch\nnon-CASH positions + cash_balance\n≠ custodian total (tolerance $0.05)\n→ POSITION_SUM_MISMATCH"]
+    end
+
+    REC --> COMMIT["db.commit() all findings atomically\nRollback all if any rule errors"]
+    COMMIT --> DQ["data_quality.status computed at egress\nfrom max severity across HH findings"]
+
+    DQ --> OK["ok\nno HIGH/CRITICAL findings"]:::ok
+    DQ --> DEG["degraded\nany HIGH finding"]:::deg
+    DQ --> UNR["unreliable\nany CRITICAL finding"]:::unr
+
+    classDef ok fill:#102a1e,stroke:#5bd4a4,color:#8ae8cc
+    classDef deg fill:#3a2010,stroke:#f5a623,color:#f5c073
+    classDef unr fill:#3a1015,stroke:#f56c6c,color:#f59090
+    </div>
+  </div>
+
+  <div class="table-wrap card" style="padding:0;">
+    <table>
+      <thead><tr><th>Finding Code</th><th>Severity</th><th>Trigger</th><th>Effect on Totals</th></tr></thead>
+      <tbody>
+        <tr><td><code>POSSIBLE_DUPLICATE_PERSON</code></td><td><span class="severity sev-medium">MEDIUM</span></td><td>Same HH, matching tax_id HMAC + similar name</td><td>None — totals unaffected</td></tr>
+        <tr><td><code>MISSING_CRM_HOUSEHOLD</code></td><td><span class="severity sev-high">HIGH</span></td><td>Person references unknown household_id</td><td>Contact orphaned</td></tr>
+        <tr><td><code>UNLINKED_ACCOUNT</code></td><td><span class="severity sev-medium">MEDIUM</span></td><td>Custodian account has no CRM association</td><td>Excluded from totals</td></tr>
+        <tr><td><code>DELETED_HOUSEHOLD_OPEN_ACCOUNT</code></td><td><span class="severity sev-medium">MEDIUM</span></td><td>Soft-deleted CRM HH has OPEN account</td><td>None direct</td></tr>
+        <tr><td><code>DUPLICATE_POSITION</code></td><td><span class="severity sev-high">HIGH</span></td><td>Same (account, date, symbol, cusip) &gt;1× in effective drop</td><td>Inflated position sum</td></tr>
+        <tr><td><code>POSITION_SUM_MISMATCH</code></td><td><span class="severity sev-high">HIGH</span> / <span class="severity sev-low">LOW</span></td><td>|Σ positions − custodian total| &gt; $0.05</td><td>Custodian total is authoritative</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Cash Double-Count Guard</h3>
+    <p>The custodian reports cash twice: as a <code>CASH</code> asset-class position AND in <code>cash_balance</code> on the Valuation row. The reconciliation check uses:</p>
+    <p style="font-family:monospace; font-size:13px; background:#12151f; padding:10px 14px; border-radius:6px; color:var(--accent2);">
+      computed_total = Σ(non-CASH positions) + valuation.cash_balance<br>
+      discrepancy = |computed_total − valuation.total_market_value|
+    </p>
+    <p>This avoids inflating the reconciliation baseline by counting cash twice.</p>
+  </div>
+</section>
+
+<!-- ───────────────────── 7. TRADE-OFFS ───────────────────── -->
+<section id="tradeoffs">
+  <h2><span class="num">7</span> Key Engineering Trade-offs</h2>
+  <p class="sub">Each decision made for correctness at assignment scope. Documented for interview defence.</p>
+
+  <div class="tradeoff-grid">
+    <div class="tradeoff-card">
+      <div class="decision">Inclusive updated_since + idempotent upserts</div>
+      <div class="rationale">CRM timestamps have 1-second precision; multiple records can share the same timestamp. An exclusive window (checkpoint + 1s) would silently skip tied records.</div>
+      <div class="chosen">✓ Chosen: inclusive boundary, replay the exact boundary timestamp safely via upsert.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">Supersedes chain, not delivery timestamp</div>
+      <div class="rationale">Custodian folders can be delivered out of order. A correction arriving 3 days late should override the original, regardless of which folder was processed last.</div>
+      <div class="chosen">✓ Chosen: manifest supersedes field is authoritative; delivery time is metadata only.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">Retain duplicate persons, never auto-merge</div>
+      <div class="rationale">Robert Chen / Bob Chen: a wrong merge produces wrong financial advice. The cost of a missed merge is a finding; the cost of a wrong merge is incorrect AUM for an AI agent.</div>
+      <div class="chosen">✓ Chosen: retain separately, emit POSSIBLE_DUPLICATE_PERSON, require human resolution.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">HMAC for tax IDs, Fernet for other PII</div>
+      <div class="rationale">Tax ID needs to support matching (same HMAC = same person) but must never be recoverable. Email/phone/DOB need to be presented to ops in plain form.</div>
+      <div class="chosen">✓ Chosen: keyed HMAC (non-reversible) for tax_id; Fernet (reversible) for the rest.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">Reconciliation failure ≠ sync failure</div>
+      <div class="rationale">A bug in a reconciliation rule should not prevent canonical data from being served. Findings are operational metadata; sync data must always be available.</div>
+      <div class="chosen">✓ Chosen: ReconciliationEngine errors are caught and logged; sync run remains success.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">SQLite over PostgreSQL</div>
+      <div class="rationale">No concurrent writers at assignment scale. WAL mode gives safe concurrent reads. PostgreSQL would add operational complexity (connection pooling, pg_dump) for no correctness benefit here.</div>
+      <div class="chosen">✓ Chosen: SQLite WAL with FK enforcement. Easy to migrate: change DATABASE_URL.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">Synchronous sync execution</div>
+      <div class="rationale">POST /v1/ops/sync blocks until complete. For a 100k-row custodian drop a job queue would be appropriate. At assignment scale, synchronous is simpler and more debuggable.</div>
+      <div class="chosen">✓ Chosen: synchronous. Noted in README as production limitation.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="decision">Policy YAML drives egress logic</div>
+      <div class="rationale">Hard-coding field rules in route handlers means adding a new field requires editing multiple files. The YAML approach means a new field rule = one YAML entry.</div>
+      <div class="chosen">✓ Chosen: PolicyEngine reads YAML at startup; apply_egress() looks up transform by field + principal.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Household Context Service · Pravar AI Senior Backend Engineer Assignment · 2026
+</footer>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1a2a5e',
+    primaryTextColor: '#e2e6f0',
+    primaryBorderColor: '#6c8ef5',
+    lineColor: '#4a5480',
+    secondaryColor: '#1a1a35',
+    tertiaryColor: '#12151f',
+    background: '#0f1117',
+    mainBkg: '#1a1d27',
+    nodeBorder: '#2d3141',
+    clusterBkg: '#141720',
+    titleColor: '#e2e6f0',
+    edgeLabelBackground: '#1a1d27',
+    attributeBackgroundColorEven: '#141720',
+    attributeBackgroundColorOdd: '#1a1d27',
+  },
+  er: { useMaxWidth: true },
+  sequence: { useMaxWidth: true, mirrorActors: false },
+  flowchart: { useMaxWidth: true, htmlLabels: true },
+  fontFamily: 'Inter, system-ui, sans-serif',
+});
+
+// Highlight active nav section on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav a[href^="#"]');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(sec => {
+    if (window.scrollY >= sec.offsetTop - 80) current = sec.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}, { passive: true });
+</script>
+</body>
+</html>

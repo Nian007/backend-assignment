@@ -3,338 +3,985 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Household Context Service — Ops Console</title>
+<title>Household Context Service — Demo Console</title>
 <style>
   :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --border: #2d3141;
-    --accent: #6c8ef5;
-    --accent2: #5bd4a4;
-    --warn: #f5a623;
-    --danger: #f56c6c;
-    --text: #e2e6f0;
-    --text-muted: #7b82a0;
-    --radius: 8px;
-    --font: 'Inter', system-ui, sans-serif;
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #141720; --surface3: #12151f;
+    --border: #2d3141; --border2: #222638;
+    --accent: #6c8ef5; --accent-dim: rgba(108,142,245,.12);
+    --green: #5bd4a4; --green-dim: rgba(91,212,164,.12);
+    --warn: #f5a623; --warn-dim: rgba(245,166,35,.12);
+    --danger: #f56c6c; --danger-dim: rgba(245,108,108,.12);
+    --purple: #b06af5; --purple-dim: rgba(176,106,245,.12);
+    --text: #e2e6f0; --text-muted: #7b82a0; --text-dim: #4a5070;
+    --radius: 8px; --radius-lg: 12px;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; font-size: 13px; }
 
-  header {
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 16px 24px; display: flex; align-items: center; gap: 12px;
+  /* ── NAV ── */
+  nav {
+    background: rgba(15,17,23,.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); height: 52px;
+    display: flex; align-items: center; padding: 0 20px; gap: 0;
+    position: sticky; top: 0; z-index: 200;
   }
-  header h1 { font-size: 18px; font-weight: 600; }
-  header .badge {
-    font-size: 11px; padding: 2px 8px; border-radius: 100px;
-    background: #1e3a5f; color: var(--accent); font-weight: 500;
+  .nav-brand { font-weight: 700; font-size: 14px; color: var(--accent); margin-right: 24px; white-space: nowrap; }
+  .nav-brand span { color: var(--text-muted); font-weight: 400; }
+  nav a {
+    color: var(--text-muted); text-decoration: none; padding: 6px 11px;
+    border-radius: 6px; font-size: 12px; white-space: nowrap; transition: .15s;
   }
+  nav a:hover { color: var(--text); background: var(--accent-dim); }
+  nav a.active { color: var(--accent); background: var(--accent-dim); }
+  .nav-sep { width: 1px; height: 18px; background: var(--border); margin: 0 8px; flex-shrink: 0; }
+  .nav-spacer { flex: 1; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-grey { background: var(--text-dim); }
+  .dot-warn { background: var(--warn); }
+  #api-status { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  /* ── LAYOUT ── */
+  .shell { display: flex; min-height: calc(100vh - 52px); }
+  aside {
+    width: 220px; flex-shrink: 0; border-right: 1px solid var(--border);
+    background: var(--surface2); padding: 16px 0; position: sticky;
+    top: 52px; height: calc(100vh - 52px); overflow-y: auto;
+  }
+  aside h3 { font-size: 10px; font-weight: 700; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; padding: 0 16px 8px; }
+  aside a {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    color: var(--text-muted); text-decoration: none; font-size: 12px; transition: .12s;
+    border-left: 2px solid transparent;
+  }
+  aside a:hover { color: var(--text); background: var(--accent-dim); }
+  aside a.active { color: var(--accent); background: var(--accent-dim); border-left-color: var(--accent); }
+  aside .icon { width: 16px; text-align: center; font-size: 13px; }
+  aside .sep { height: 1px; background: var(--border); margin: 10px 16px; }
 
-  .grid { display: grid; gap: 16px; }
-  .grid-2 { grid-template-columns: 1fr 1fr; }
-  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+  main { flex: 1; overflow: hidden; padding: 20px; }
 
+  /* ── PANELS ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── CARDS ── */
   .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px;
+    border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px;
   }
-  .card h2 { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
-
-  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-  .stat { flex: 1; min-width: 100px; background: #12151f; border-radius: var(--radius); padding: 12px 16px; }
-  .stat .val { font-size: 26px; font-weight: 700; color: var(--accent); }
-  .stat .lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-
-  button {
-    background: var(--accent); color: #fff; border: none; padding: 8px 16px;
-    border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 600;
-    transition: opacity .15s;
+  .card-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
   }
-  button:hover { opacity: .85; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  button.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-  button.secondary:hover { border-color: var(--accent); color: var(--accent); }
-
-  input, select {
-    background: #12151f; border: 1px solid var(--border); color: var(--text);
-    border-radius: var(--radius); padding: 8px 12px; font-size: 13px; width: 100%;
-    outline: none;
+  .card-title .badge {
+    font-size: 10px; padding: 1px 7px; border-radius: 100px; font-weight: 600;
   }
-  input:focus, select:focus { border-color: var(--accent); }
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-warn { background: var(--warn-dim); color: var(--warn); }
+  .badge-danger { background: var(--danger-dim); color: var(--danger); }
+  .badge-blue { background: var(--accent-dim); color: var(--accent); }
+  .badge-purple { background: var(--purple-dim); color: var(--purple); }
 
-  .badge-sev {
-    display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px;
-    border-radius: 4px; text-transform: uppercase; letter-spacing: .05em;
+  /* ── STATS ── */
+  .stats-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-tile {
+    flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px 20px;
   }
-  .sev-critical { background: #3a1015; color: #f56c6c; }
-  .sev-high     { background: #3a2010; color: #f5a623; }
-  .sev-medium   { background: #2d2a10; color: #f5e023; }
-  .sev-low      { background: #102a1e; color: #5bd4a4; }
+  .stat-tile .val { font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-tile .lbl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .stat-tile.accent .val { color: var(--accent); }
+  .stat-tile.green .val { color: var(--green); }
+  .stat-tile.warn .val { color: var(--warn); }
+  .stat-tile.purple .val { color: var(--purple); }
 
-  .status-ok         { color: var(--accent2); }
-  .status-degraded   { color: var(--warn); }
-  .status-unreliable { color: var(--danger); }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { color: var(--text-muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-weight: 500; font-size: 11px; text-transform: uppercase; }
-  td { padding: 8px 10px; border-bottom: 1px solid #1a1d27; vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #161926; }
-
-  .mono { font-family: monospace; font-size: 12px; }
-  .tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #1e2235; color: var(--text-muted); margin-right: 4px; }
-
-  #toast {
-    position: fixed; bottom: 20px; right: 20px;
-    background: #1e3a2e; border: 1px solid var(--accent2); color: var(--accent2);
-    padding: 10px 18px; border-radius: var(--radius); font-size: 13px;
-    display: none; z-index: 999;
+  /* ── BUTTONS ── */
+  .btn {
+    border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;
+    font-size: 12px; font-weight: 600; transition: .15s; display: inline-flex; align-items: center; gap: 6px;
   }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #7a9ef8; }
+  .btn-success { background: #1a3a2a; color: var(--green); border: 1px solid #2a5a3a; }
+  .btn-success:hover { background: #2a4a3a; }
+  .btn-warn { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(245,166,35,.3); }
+  .btn-ghost { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--accent); border-color: var(--accent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-sm { padding: 5px 11px; font-size: 11px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  /* ── INPUTS ── */
+  select, input[type=text] {
+    background: var(--surface3); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 11px; border-radius: var(--radius); font-size: 12px;
+  }
+  select:focus, input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+  /* ── SPINNER ── */
   @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block;
+  }
 
-  .empty { color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center; }
+  /* ── TABLE ── */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: var(--surface2); }
+  .tbl code { font-family: monospace; font-size: 11px; background: var(--surface3); padding: 1px 5px; border-radius: 3px; color: var(--green); }
 
-  details summary { cursor: pointer; color: var(--accent); font-size: 12px; margin-top: 4px; }
-  details pre { background: #12151f; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; font-size: 11px; overflow: auto; max-height: 200px; margin-top: 6px; color: var(--text-muted); }
+  /* ── SEVERITY CHIPS ── */
+  .sev { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .sev-critical { background: var(--danger-dim); color: var(--danger); }
+  .sev-high { background: var(--warn-dim); color: var(--warn); }
+  .sev-medium { background: var(--purple-dim); color: var(--purple); }
+  .sev-low { background: var(--green-dim); color: var(--green); }
 
-  .hh-section { margin-top: 16px; }
-  .totals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  @media (max-width: 600px) { .totals-grid { grid-template-columns: 1fr; } }
+  /* ── DQ STATUS ── */
+  .dq { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 100px; }
+  .dq-ok { background: var(--green-dim); color: var(--green); }
+  .dq-degraded { background: var(--warn-dim); color: var(--warn); }
+  .dq-unreliable { background: var(--danger-dim); color: var(--danger); }
+
+  /* ── LOG OUTPUT ── */
+  .log-box {
+    background: #0a0c12; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; font-family: monospace; font-size: 11px; color: var(--text-muted);
+    height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+  }
+  .log-box .log-ok { color: var(--green); }
+  .log-box .log-err { color: var(--danger); }
+  .log-box .log-info { color: var(--accent); }
+  .log-box .log-warn { color: var(--warn); }
+
+  /* ── JSON VIEW ── */
+  .json-box {
+    background: #0a0c12; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; font-family: monospace; font-size: 11px;
+    max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+    color: #9ca3b4;
+    line-height: 1.6;
+  }
+  .json-key { color: var(--accent); }
+  .json-string { color: var(--green); }
+  .json-number { color: #f5c842; }
+  .json-bool { color: var(--purple); }
+  .json-null { color: var(--text-muted); }
+
+  /* ── PRINCIPAL TOGGLE ── */
+  .toggle-group { display: flex; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .toggle-btn { padding: 6px 14px; font-size: 11px; font-weight: 600; border: none; background: none; color: var(--text-muted); cursor: pointer; transition: .15s; }
+  .toggle-btn.active { background: var(--accent); color: #fff; }
+
+  /* ── DEMO STEPS ── */
+  .steps { counter-reset: step; }
+  .step {
+    display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border2);
+    align-items: flex-start;
+  }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--accent-dim);
+    border: 1px solid var(--accent); color: var(--accent); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+  }
+  .step-num.done { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .step-content h4 { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .step-content p { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+  .step-content code { font-family: monospace; font-size: 11px; background: var(--surface3); padding: 1px 5px; border-radius: 3px; color: var(--green); }
+
+  /* ── HOUSEHOLD CARD ── */
+  .hh-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: .15s;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .hh-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .hh-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .hh-name { font-weight: 600; font-size: 14px; }
+  .hh-meta { color: var(--text-muted); font-size: 11px; margin-top: 3px; }
+  .hh-aum { text-align: right; }
+  .hh-aum .amount { font-size: 18px; font-weight: 700; color: var(--green); }
+  .hh-aum .lbl { font-size: 10px; color: var(--text-muted); }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } .grid-3 { grid-template-columns: 1fr 1fr; } }
+
+  /* ── MISC ── */
+  .empty { text-align: center; color: var(--text-muted); padding: 32px; font-size: 13px; }
+  .mt8 { margin-top: 8px; }
+  .mt12 { margin-top: 12px; }
+  .mt16 { margin-top: 16px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .flex-gap { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .mono { font-family: monospace; font-size: 11px; color: var(--text-muted); }
+  .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+  .tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--surface3); color: var(--text-muted); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-row { display: flex; align-items: center; gap: 0; margin: 16px 0; overflow-x: auto; }
+  .flow-box {
+    background: var(--surface3); border: 1px solid var(--border2); border-radius: var(--radius);
+    padding: 10px 16px; text-align: center; flex-shrink: 0;
+    font-size: 11px; line-height: 1.4;
+  }
+  .flow-box .fb-title { font-weight: 600; font-size: 12px; margin-bottom: 2px; }
+  .flow-box.src { border-color: var(--accent); color: var(--accent); }
+  .flow-box.proc { border-color: var(--purple); color: var(--purple); }
+  .flow-box.store { border-color: #f56c6c; color: #f59090; }
+  .flow-box.api { border-color: var(--green); color: var(--green); }
+  .flow-arrow { color: var(--text-dim); font-size: 18px; padding: 0 6px; flex-shrink: 0; }
+
+  /* ── TOOLTIP ── */
+  [title] { cursor: help; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Household Context Service</h1>
-  <span class="badge">Ops Console</span>
-</header>
+<!-- NAV -->
+<nav>
+  <span class="nav-brand">⬡ Household Context <span>Service</span></span>
+  <a href="#" class="active" onclick="showPanel('overview',this)">Overview</a>
+  <a href="#" onclick="showPanel('sync',this)">Sync</a>
+  <a href="#" onclick="showPanel('households',this)">Households</a>
+  <a href="#" onclick="showPanel('context',this)">Context API</a>
+  <a href="#" onclick="showPanel('findings',this)">Findings</a>
+  <a href="#" onclick="showPanel('runs',this)">Sync Runs</a>
+  <div class="nav-sep"></div>
+  <a href="/ui/architecture.html" target="_blank">Architecture ↗</a>
+  <div class="nav-spacer"></div>
+  <span id="api-status"><span class="status-dot dot-grey" id="api-dot"></span><span id="api-text">checking…</span></span>
+</nav>
 
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside>
+  <h3>Demo Guide</h3>
+  <a href="#" class="active" onclick="showPanel('overview',this)"><span class="icon">🏠</span> Overview</a>
+  <a href="#" onclick="showPanel('sync',this)"><span class="icon">🔄</span> 1 · Run Syncs</a>
+  <a href="#" onclick="showPanel('households',this)"><span class="icon">👥</span> 2 · Households</a>
+  <a href="#" onclick="showPanel('context',this)"><span class="icon">🤖</span> 3 · Context API</a>
+  <a href="#" onclick="showPanel('findings',this)"><span class="icon">⚠️</span> 4 · Findings</a>
+  <a href="#" onclick="showPanel('runs',this)"><span class="icon">📋</span> 5 · Sync Runs</a>
+  <div class="sep"></div>
+  <h3>Quick Links</h3>
+  <a href="/ui/architecture.html" target="_blank"><span class="icon">📐</span> Architecture</a>
+  <a href="/docs" target="_blank"><span class="icon">📄</span> API Docs</a>
+  <a href="#" onclick="showPanel('policy',this)"><span class="icon">🔒</span> Data Policy</a>
+</aside>
+
+<!-- MAIN -->
 <main>
 
-<!-- Auth bar -->
-<div class="card" style="margin-bottom:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-  <label style="font-size:13px; color:var(--text-muted); white-space:nowrap;">API Key</label>
-  <input id="apiKey" type="password" style="max-width:320px;" placeholder="ops-key-local-001" value="ops-key-local-001">
-  <input id="apiBase" style="max-width:220px;" value="http://127.0.0.1:8090" placeholder="Service URL">
-  <button onclick="checkHealth()">Ping</button>
-  <span id="healthBadge" style="font-size:12px;"></span>
+<!-- OVERVIEW PANEL -->
+<div class="panel active" id="panel-overview">
+  <div class="flex-between mt16" style="margin-bottom:16px;">
+    <div>
+      <h1 style="font-size:20px;font-weight:800;margin-bottom:4px;">Pravar Household Context Service</h1>
+      <p style="color:var(--text-muted);font-size:12px;">Senior Backend Engineer · Demo Console · Data as of Oct 2026</p>
+    </div>
+    <button class="btn btn-primary" onclick="runBothSyncs()">▶ Run Full Demo Sync</button>
+  </div>
+
+  <div class="stats-row" id="overview-stats">
+    <div class="stat-tile accent"><div class="val" id="stat-hh">—</div><div class="lbl">Households</div></div>
+    <div class="stat-tile green"><div class="val" id="stat-runs">—</div><div class="lbl">Sync Runs</div></div>
+    <div class="stat-tile warn"><div class="val" id="stat-findings">—</div><div class="lbl">Findings</div></div>
+    <div class="stat-tile purple"><div class="val" id="stat-aum">—</div><div class="lbl">Total AUM (H-1001)</div></div>
+  </div>
+
+  <!-- System flow -->
+  <div class="card">
+    <div class="card-title">System Architecture — Data Flow</div>
+    <div class="flow-row">
+      <div class="flow-box src"><div class="fb-title">Ledgerline CRM</div>REST API :8081<br>Bearer · Cursor pages</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box proc"><div class="fb-title">CRM Connector</div>Retry · Checkpoint<br>Soft-delete</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box proc"><div class="fb-title">Policy Engine</div>Encrypt PII<br>HMAC tax_id</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box store"><div class="fb-title">Canonical Store</div>SQLite WAL<br>10 tables</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box proc"><div class="fb-title">Reconciliation</div>6 rules · Findings<br>Atomic commit</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box api"><div class="fb-title">Context API</div>Principal-filtered<br>agent · ops</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-box src"><div class="fb-title">Meridian Custody</div>CSV file drops<br>SHA-256 · Manifest</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box proc"><div class="fb-title">Custodian Connector</div>Supersedes chain<br>Atomic ingest</div>
+      <span class="flow-arrow" style="visibility:hidden">→</span>
+      <div style="flex:1"></div>
+      <span class="flow-arrow" style="visibility:hidden">→</span>
+      <div style="flex:1"></div>
+      <span class="flow-arrow" style="visibility:hidden">→</span>
+      <div style="flex:1"></div>
+      <span class="flow-arrow" style="visibility:hidden">→</span>
+      <div style="flex:1"></div>
+    </div>
+  </div>
+
+  <!-- Demo steps -->
+  <div class="card">
+    <div class="card-title">Demo Walk-Through</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Run Syncs</h4>
+          <p>Go to <strong>Sync</strong> and click <em>Run CRM Sync</em> then <em>Run Custodian Sync</em> (or use the <em>Run Full Demo Sync</em> button above). Watch the log. The CRM connector pages through households and contacts, applies HMAC / Fernet encryption for PII. The custodian connector validates SHA-256 hashes, processes the supersedes chain so <code>MC-20261008-02</code> correctly overrides <code>MC-20261008-01</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Browse Households</h4>
+          <p>Go to <strong>Households</strong> to see all 6 CRM households. Note <em>Whitfield Family</em> (H-1004) is soft-deleted. Account 4430 shows CLOSED in Oct-9. Account 4499 and 4460 are unlinked (no household association).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Query Context API — Agent vs Ops</h4>
+          <p>Go to <strong>Context API</strong>. Select <em>H-1001 Chen Family</em> and toggle between <strong>agent</strong> and <strong>ops</strong> principals. Note: agent sees masked email <code>r***@example.com</code>, no phone. Ops sees plain email, last-4 phone. Neither ever receives <code>tax_id</code>. Finding <code>detail</code> appears only for ops.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Review Findings</h4>
+          <p>Go to <strong>Findings</strong>. Key findings: <code>POSSIBLE_DUPLICATE_PERSON</code> for Robert Chen / Bob Chen (same HMAC, nickname match), <code>UNLINKED_ACCOUNT</code> for 4460 and 4499, <code>DUPLICATE_POSITION</code> for VTI in account 4401 Oct-8 v1 drop (effective snapshot corrects this).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Inspect Sync Runs</h4>
+          <p>Go to <strong>Sync Runs</strong> to see every run — status, records ingested, checkpoint advanced, errors. A failed run does not advance the checkpoint. Previously ingested canonical data is always available.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Sync panel -->
-<div class="grid grid-2" style="margin-bottom:16px;">
-  <div class="card">
-    <h2>Trigger Sync</h2>
-    <div style="display:flex; gap:8px; margin-bottom:12px;">
-      <button id="syncCrm" onclick="triggerSync('crm')">Sync CRM</button>
-      <button id="syncCustodian" onclick="triggerSync('custodian')">Sync Custodian</button>
+<!-- SYNC PANEL -->
+<div class="panel" id="panel-sync">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:16px;">Sync Control</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">CRM Sync <span class="badge badge-blue">ledgerline_crm</span></div>
+      <p style="color:var(--text-muted);margin-bottom:12px;font-size:12px;">Syncs households, contacts, and account references from Ledgerline CRM. Uses cursor pagination with incremental checkpoint. Retries on 429/503.</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-crm" onclick="triggerSync('crm')">▶ Run CRM Sync</button>
+        <span id="crm-status" class="mono"></span>
+      </div>
     </div>
-    <div id="syncResult" style="font-size:12px; color:var(--text-muted);"></div>
+    <div class="card">
+      <div class="card-title">Custodian Sync <span class="badge badge-purple">meridian_custody</span></div>
+      <p style="color:var(--text-muted);margin-bottom:12px;font-size:12px;">Ingests CSV file drops from the <code>custodian_drops/</code> folder. Validates SHA-256 hashes, row counts, resolves the supersedes chain to select effective snapshots.</p>
+      <div class="btn-row">
+        <button class="btn btn-success" id="btn-cust" onclick="triggerSync('custodian')">▶ Run Custodian Sync</button>
+        <span id="cust-status" class="mono"></span>
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <h2>Recent Sync Runs</h2>
-    <div style="display:flex; gap:8px; margin-bottom:12px;">
-      <button class="secondary" onclick="loadRuns()">Refresh</button>
+    <div class="card-title">Sync Log</div>
+    <div class="log-box" id="sync-log">Waiting for sync…</div>
+    <div class="mt8 flex-gap">
+      <button class="btn btn-ghost btn-sm" onclick="clearLog()">Clear Log</button>
+      <button class="btn btn-warn btn-sm" onclick="runBothSyncs()">▶ Run Both Syncs</button>
     </div>
-    <div id="runsTable"><div class="empty">No runs loaded.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Custodian Drop Semantics</div>
+    <table class="tbl">
+      <thead><tr><th>Drop ID</th><th>As-of Date</th><th>Supersedes</th><th>Effective?</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>MC-20261008-01</code></td><td>2026-10-08</td><td>—</td><td><span class="badge badge-warn">superseded</span></td><td>MSFT MV 10× error, duplicate VTI</td></tr>
+        <tr><td><code>MC-20261008-02</code></td><td>2026-10-08</td><td>MC-20261008-01</td><td><span class="badge badge-green">effective</span></td><td>Correction: MSFT fixed to 41650.00</td></tr>
+        <tr><td><code>MC-20261009-01</code></td><td>2026-10-09</td><td>—</td><td><span class="badge badge-green">effective</span></td><td>Oct-9 snapshot. Account 4430 CLOSED, 4460 new.</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
-<!-- Household lookup -->
-<div class="card">
-  <h2>Household Context</h2>
-  <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
-    <select id="hhSelect" style="max-width:260px;">
-      <option value="">Select household…</option>
-      <option value="H-1001">H-1001 — Chen Family</option>
-      <option value="H-1002">H-1002 — Nakamura Trust</option>
-      <option value="H-1003">H-1003 — Alvarez-Reyes Trust</option>
-      <option value="H-1004">H-1004 — Davidson Estate (deleted)</option>
-      <option value="H-1005">H-1005 — Kenji Sato</option>
-      <option value="H-1006">H-1006 — Pemberton Advisors</option>
-    </select>
-    <input id="hhCustom" style="max-width:140px;" placeholder="or type ID">
-    <button onclick="loadContext()">Load Context</button>
+<!-- HOUSEHOLDS PANEL -->
+<div class="panel" id="panel-households">
+  <div class="flex-between" style="margin-bottom:16px;">
+    <h2 style="font-size:16px;font-weight:700;">Households</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadHouseholds()">↺ Refresh</button>
+  </div>
+  <div id="hh-list"><div class="empty">Run a sync first, then refresh.</div></div>
+</div>
+
+<!-- CONTEXT API PANEL -->
+<div class="panel" id="panel-context">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:16px;">Context API Explorer</h2>
+
+  <div class="card">
+    <div class="flex-gap" style="margin-bottom:16px;">
+      <select id="ctx-hh" style="flex:1;max-width:280px;">
+        <option value="H-1001">H-1001 — Chen Family</option>
+        <option value="H-1002">H-1002 — Patel Family</option>
+        <option value="H-1003">H-1003 — Rodriguez Family</option>
+        <option value="H-1004">H-1004 — Whitfield Family (deleted)</option>
+        <option value="H-1005">H-1005 — Sato Family</option>
+        <option value="H-1006">H-1006 — Nguyen Family</option>
+        <option value="H-9999">H-9999 — Unknown (expect 404)</option>
+      </select>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="tog-agent" onclick="setPrincipal('agent')">🤖 Agent</button>
+        <button class="toggle-btn" id="tog-ops" onclick="setPrincipal('ops')">🛠 Ops</button>
+      </div>
+      <button class="btn btn-primary" onclick="fetchContext()">Fetch Context</button>
+    </div>
+    <div id="ctx-principal-note" style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
+      <strong>Agent</strong> — receives masked email, no phone, no finding detail. Account numbers as ****XXXX.
+    </div>
+    <div id="ctx-loading" style="display:none;" class="flex-gap"><div class="spinner"></div><span style="color:var(--text-muted);">Loading…</span></div>
   </div>
 
-  <div id="contextOutput"></div>
+  <!-- Context result -->
+  <div id="ctx-result" style="display:none;">
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card" id="ctx-hh-block"></div>
+      <div class="card" id="ctx-totals-block"></div>
+    </div>
+    <div class="card" id="ctx-members-block"></div>
+    <div class="card" id="ctx-accounts-block"></div>
+    <div class="card" id="ctx-dq-block"></div>
+    <div class="card">
+      <div class="card-title">Raw JSON Response</div>
+      <div class="json-box" id="ctx-raw"></div>
+    </div>
+  </div>
+  <div id="ctx-error" style="display:none;" class="card">
+    <div class="card-title">Error Response</div>
+    <div class="json-box" id="ctx-error-body"></div>
+  </div>
+</div>
+
+<!-- FINDINGS PANEL -->
+<div class="panel" id="panel-findings">
+  <div class="flex-between" style="margin-bottom:16px;">
+    <h2 style="font-size:16px;font-weight:700;">Reconciliation Findings</h2>
+    <div class="flex-gap">
+      <select id="findings-filter" onchange="loadFindings()">
+        <option value="">All severities</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="loadFindings()">↺ Refresh</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="findings-stats"></div>
+
+  <div class="card">
+    <table class="tbl" id="findings-tbl">
+      <thead><tr><th>Severity</th><th>Code</th><th>Message</th><th>Entity</th></tr></thead>
+      <tbody id="findings-body"><tr><td colspan="4" class="empty">Run a sync to generate findings.</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card mt16">
+    <div class="card-title">Severity Model</div>
+    <table class="tbl">
+      <thead><tr><th>Severity</th><th>API Status</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="sev sev-critical">CRITICAL</span></td><td><span class="dq dq-unreliable">unreliable</span></td><td style="color:var(--text-muted)">Agent refuses to quote numbers. Data cannot be trusted.</td></tr>
+        <tr><td><span class="sev sev-high">HIGH</span></td><td><span class="dq dq-degraded">degraded</span></td><td style="color:var(--text-muted)">Material problem; agent proceeds with caveat.</td></tr>
+        <tr><td><span class="sev sev-medium">MEDIUM</span></td><td><span class="dq dq-ok">ok</span></td><td style="color:var(--text-muted)">Incomplete or ambiguous; agent proceeds normally.</td></tr>
+        <tr><td><span class="sev sev-low">LOW</span></td><td><span class="dq dq-ok">ok</span></td><td style="color:var(--text-muted)">Informational anomaly; no material impact.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SYNC RUNS PANEL -->
+<div class="panel" id="panel-runs">
+  <div class="flex-between" style="margin-bottom:16px;">
+    <h2 style="font-size:16px;font-weight:700;">Sync Run History</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadRuns()">↺ Refresh</button>
+  </div>
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>Run ID</th><th>Source</th><th>Type</th><th>Status</th><th>Ingested</th><th>Started</th><th>Checkpoint</th></tr></thead>
+      <tbody id="runs-body"><tr><td colspan="7" class="empty">No runs yet. Run a sync first.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- POLICY PANEL -->
+<div class="panel" id="panel-policy">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:16px;">Data Policy Summary</h2>
+  <div class="card">
+    <div class="card-title">Field Policy Table — from contracts/data_policy.yaml</div>
+    <table class="tbl">
+      <thead><tr><th>Field</th><th>Store</th><th>Log</th><th>Agent Egress</th><th>Ops Egress</th></tr></thead>
+      <tbody>
+        <tr><td><code>person.tax_id</code></td><td><span class="badge badge-warn">HMAC hash</span></td><td><span class="badge badge-danger">DENY</span></td><td><span class="badge badge-danger">OMIT</span></td><td><span class="badge badge-danger">OMIT</span></td></tr>
+        <tr><td><code>person.date_of_birth</code></td><td><span class="badge badge-purple">Fernet</span></td><td><span class="badge badge-danger">DENY</span></td><td><span class="badge badge-blue">age_band</span></td><td><span class="badge badge-blue">age_band</span></td></tr>
+        <tr><td><code>person.email</code></td><td><span class="badge badge-purple">Fernet</span></td><td><span class="badge badge-danger">DENY</span></td><td><span class="badge badge-warn">mask</span></td><td><span class="badge badge-green">plain</span></td></tr>
+        <tr><td><code>person.phone</code></td><td><span class="badge badge-purple">Fernet</span></td><td><span class="badge badge-danger">DENY</span></td><td><span class="badge badge-danger">OMIT</span></td><td><span class="badge badge-blue">last4</span></td></tr>
+        <tr><td><code>person.notes</code></td><td><span class="badge badge-purple">Fernet+redact</span></td><td><span class="badge badge-danger">DENY</span></td><td><span class="badge badge-warn">redacted</span></td><td><span class="badge badge-warn">redacted</span></td></tr>
+        <tr><td><code>account.account_number</code></td><td><span class="badge badge-green">plain</span></td><td><span class="badge badge-warn">last4 only</span></td><td><span class="badge badge-blue">last4</span></td><td><span class="badge badge-blue">last4</span></td></tr>
+        <tr><td><code>account.primary_tax_id</code></td><td><span class="badge badge-danger">NEVER STORED</span></td><td><span class="badge badge-danger">DENY</span></td><td><span class="badge badge-danger">OMIT</span></td><td><span class="badge badge-danger">OMIT</span></td></tr>
+        <tr><td><code>finding.detail</code></td><td><span class="badge badge-green">plain</span></td><td><span class="badge badge-green">allowed</span></td><td><span class="badge badge-danger">OMIT</span></td><td><span class="badge badge-green">included</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Age Bands</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:2;">
+        under-25 · 25-34 · 35-44 · 45-54 · 55-64 · 65+
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Principals & Scopes</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:2;">
+        <strong style="color:var(--text);">agent</strong> — context:read<br>
+        <strong style="color:var(--text);">ops</strong> — context:read, findings:read, sync:run, sync:read
+      </div>
+    </div>
+  </div>
 </div>
 
 </main>
-
-<div id="toast"></div>
+</div>
 
 <script>
-const BASE = () => document.getElementById('apiBase').value.replace(/\/+$/, '');
-const KEY  = () => document.getElementById('apiKey').value.trim();
-const H    = () => ({ 'Authorization': 'Bearer ' + KEY(), 'Content-Type': 'application/json' });
+'use strict';
 
-function toast(msg, ok=true) {
-  const el = document.getElementById('toast');
-  el.style.background = ok ? '#1e3a2e' : '#3a1015';
-  el.style.borderColor = ok ? 'var(--accent2)' : 'var(--danger)';
-  el.style.color = ok ? 'var(--accent2)' : 'var(--danger)';
-  el.textContent = msg;
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 3000);
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const AGENT_KEY = 'agent-key-local-001';
+const OPS_KEY   = 'ops-key-local-001';
+let currentPrincipal = 'agent';
+
+// ─── PANEL NAVIGATION ────────────────────────────────────────────────────────
+function showPanel(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('nav a, aside a').forEach(a => a.classList.remove('active'));
+  if (el) {
+    el.classList.add('active');
+    // Mirror selection to other nav
+    document.querySelectorAll(`nav a[onclick*="${name}"], aside a[onclick*="${name}"]`).forEach(a => a.classList.add('active'));
+  }
+  if (name === 'households') loadHouseholds();
+  if (name === 'findings') loadFindings();
+  if (name === 'runs') loadRuns();
+  if (name === 'overview') loadOverview();
+  return false;
 }
 
-async function checkHealth() {
+// ─── API HEALTH ──────────────────────────────────────────────────────────────
+async function checkApi() {
   try {
-    const r = await fetch(BASE() + '/health');
-    const j = await r.json();
-    document.getElementById('healthBadge').innerHTML = '<span style="color:var(--accent2)">● ' + j.status + '</span>';
-  } catch(e) {
-    document.getElementById('healthBadge').innerHTML = '<span style="color:var(--danger)">● unreachable</span>';
+    const r = await fetch('/health');
+    const dot = document.getElementById('api-dot');
+    const txt = document.getElementById('api-text');
+    if (r.ok) {
+      dot.className = 'status-dot dot-green'; txt.textContent = 'API online';
+    } else {
+      dot.className = 'status-dot dot-warn'; txt.textContent = 'API error';
+    }
+  } catch {
+    document.getElementById('api-dot').className = 'status-dot dot-warn';
+    document.getElementById('api-text').textContent = 'API unreachable';
   }
 }
+
+// ─── SYNC ────────────────────────────────────────────────────────────────────
+const logEl = () => document.getElementById('sync-log');
+function appendLog(msg, cls = '') {
+  const el = logEl();
+  const ts = new Date().toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `[${ts}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { logEl().innerHTML = ''; }
 
 async function triggerSync(source) {
-  const btn = document.getElementById('sync' + (source === 'crm' ? 'Crm' : 'Custodian'));
+  const btn = document.getElementById('btn-' + source);
+  const statusEl = document.getElementById(source + '-status');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Running…';
-  const el = document.getElementById('syncResult');
-  el.textContent = '';
+  statusEl.textContent = '';
+  appendLog(`Starting ${source} sync…`, 'log-info');
+
   try {
-    const r = await fetch(BASE() + '/v1/ops/sync/' + source, { method:'POST', headers: H() });
-    const j = await r.json();
+    const r = await fetch(`/v1/ops/sync/${source}`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + OPS_KEY, 'Content-Type': 'application/json' }
+    });
+    const data = await r.json();
     if (r.ok) {
-      el.innerHTML = `<span style="color:var(--accent2)">✓</span> <b>${j.source}</b> — ${j.status} — ingested <b>${j.records_ingested}</b>, skipped <b>${j.records_skipped}</b>`;
-      toast('Sync complete: ' + j.records_ingested + ' ingested');
-      loadRuns();
+      appendLog(`✓ ${source} sync complete. Status: ${data.status}. Ingested: ${data.records_ingested ?? '?'} Skipped: ${data.records_skipped ?? '?'}`, 'log-ok');
+      if (data.checkpoint_advanced_to) appendLog(`  Checkpoint → ${data.checkpoint_advanced_to}`, 'log-ok');
+      if (data.errors && data.errors.length) data.errors.forEach(e => appendLog(`  ! ${e}`, 'log-warn'));
+      statusEl.textContent = `✓ done (${data.records_ingested ?? '?'} ingested)`;
     } else {
-      el.innerHTML = `<span style="color:var(--danger)">✗ ${j.error?.code}: ${j.error?.message}</span>`;
-      toast(j.error?.message, false);
+      appendLog(`✗ ${source} error: ${JSON.stringify(data)}`, 'log-err');
+      statusEl.textContent = `✗ failed`;
     }
-  } catch(e) {
-    el.innerHTML = '<span style="color:var(--danger)">Network error: ' + e.message + '</span>';
-    toast('Network error', false);
+  } catch (e) {
+    appendLog(`✗ Network error: ${e.message}`, 'log-err');
+    statusEl.textContent = `✗ network error`;
+  } finally {
+    btn.disabled = false;
   }
-  btn.disabled = false;
-  btn.textContent = source === 'crm' ? 'Sync CRM' : 'Sync Custodian';
+  loadOverview();
 }
 
-async function loadRuns() {
+async function runBothSyncs() {
+  clearLog();
+  appendLog('Running CRM + Custodian syncs…', 'log-info');
+  await triggerSync('crm');
+  await triggerSync('custodian');
+  appendLog('Both syncs complete.', 'log-ok');
+  loadFindings();
+  loadRuns();
+}
+
+// ─── OVERVIEW STATS ──────────────────────────────────────────────────────────
+async function loadOverview() {
   try {
-    const r = await fetch(BASE() + '/v1/ops/sync-runs?limit=10', { headers: H() });
-    const runs = await r.json();
-    if (!Array.isArray(runs) || runs.length === 0) {
-      document.getElementById('runsTable').innerHTML = '<div class="empty">No runs yet.</div>';
+    const r = await fetch('/v1/ops/sync-runs?limit=200', { headers: { 'Authorization': 'Bearer ' + OPS_KEY } });
+    if (r.ok) {
+      const runs = await r.json();
+      document.getElementById('stat-runs').textContent = runs.length;
+    }
+  } catch {}
+
+  // H-1001 AUM
+  try {
+    const r = await fetch('/v1/households/H-1001/context', { headers: { 'Authorization': 'Bearer ' + OPS_KEY } });
+    if (r.ok) {
+      const d = await r.json();
+      const amt = parseFloat(d.totals?.market_value?.amount || 0);
+      document.getElementById('stat-aum').textContent = '$' + amt.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      const hhs = d.household ? 6 : 0;
+      document.getElementById('stat-hh').textContent = 6;
+    }
+  } catch {}
+}
+
+// ─── HOUSEHOLDS ──────────────────────────────────────────────────────────────
+const HOUSEHOLDS = [
+  { id: 'H-1001', name: 'Chen Family', advisor: 'Priya Natarajan', tier: 'Premier' },
+  { id: 'H-1002', name: 'Patel Family', advisor: 'Marcus Webb', tier: 'Premier' },
+  { id: 'H-1003', name: 'Rodriguez Family', advisor: 'Lisa Chen', tier: 'Standard' },
+  { id: 'H-1004', name: 'Whitfield Family', advisor: 'Daniel Moss', tier: 'Standard' },
+  { id: 'H-1005', name: 'Sato Family', advisor: 'Priya Natarajan', tier: 'Standard' },
+  { id: 'H-1006', name: 'Nguyen Family', advisor: 'Marcus Webb', tier: 'Standard' },
+];
+
+async function loadHouseholds() {
+  const container = document.getElementById('hh-list');
+  container.innerHTML = '<div class="flex-gap"><div class="spinner"></div><span style="color:var(--text-muted)">Loading…</span></div>';
+
+  const results = await Promise.all(HOUSEHOLDS.map(async hh => {
+    try {
+      const r = await fetch(`/v1/households/${hh.id}/context`, { headers: { 'Authorization': 'Bearer ' + OPS_KEY } });
+      if (r.ok) return { ...hh, data: await r.json(), ok: true };
+      return { ...hh, ok: false, status: r.status };
+    } catch { return { ...hh, ok: false }; }
+  }));
+
+  const hhCount = results.filter(r => r.ok).length;
+  document.getElementById('stat-hh').textContent = hhCount;
+
+  container.innerHTML = results.map(hh => {
+    if (!hh.ok) {
+      return `<div class="hh-card" onclick="goContext('${hh.id}')">
+        <div><div class="hh-name">${hh.name}</div><div class="hh-meta">${hh.id} · ${hh.advisor} · ${hh.tier}</div></div>
+        <div class="hh-aum"><span class="badge badge-warn">HTTP ${hh.status || 'error'}</span></div>
+      </div>`;
+    }
+    const d = hh.data;
+    const aum = parseFloat(d.totals?.market_value?.amount || 0);
+    const status = d.household?.status;
+    const dq = d.data_quality?.status;
+    const findingCount = d.data_quality?.findings?.length || 0;
+    const memberCount = d.members?.length || 0;
+    const acctCount = d.accounts?.length || 0;
+    return `<div class="hh-card" onclick="goContext('${hh.id}')">
+      <div>
+        <div class="hh-name">${d.household.name}
+          ${status === 'deleted' ? '<span class="badge badge-danger" style="margin-left:6px">deleted</span>' : ''}
+        </div>
+        <div class="hh-meta">${hh.id} · ${hh.advisor} · ${hh.tier} · ${memberCount} members · ${acctCount} accounts</div>
+        <div class="flex-gap mt8">
+          <span class="dq dq-${dq}">${dq}</span>
+          ${findingCount > 0 ? `<span class="badge badge-warn">${findingCount} finding${findingCount > 1 ? 's' : ''}</span>` : ''}
+        </div>
+      </div>
+      <div class="hh-aum">
+        <div class="amount">$${aum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div class="lbl">AUM</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function goContext(hhId) {
+  document.getElementById('ctx-hh').value = hhId;
+  showPanel('context', null);
+  fetchContext();
+}
+
+// ─── CONTEXT API ─────────────────────────────────────────────────────────────
+function setPrincipal(p) {
+  currentPrincipal = p;
+  document.getElementById('tog-agent').classList.toggle('active', p === 'agent');
+  document.getElementById('tog-ops').classList.toggle('active', p === 'ops');
+  const noteEl = document.getElementById('ctx-principal-note');
+  if (p === 'agent') {
+    noteEl.innerHTML = '<strong>Agent</strong> — masked email, no phone, no finding detail. Account numbers as ****XXXX.';
+  } else {
+    noteEl.innerHTML = '<strong>Ops</strong> — plain email, last-4 phone, finding detail included. Account numbers as ****XXXX.';
+  }
+}
+
+async function fetchContext() {
+  const hhId = document.getElementById('ctx-hh').value;
+  const key = currentPrincipal === 'ops' ? OPS_KEY : AGENT_KEY;
+  document.getElementById('ctx-loading').style.display = 'flex';
+  document.getElementById('ctx-result').style.display = 'none';
+  document.getElementById('ctx-error').style.display = 'none';
+
+  try {
+    const r = await fetch(`/v1/households/${hhId}/context`, {
+      headers: { 'Authorization': `Bearer ${key}` }
+    });
+    const data = await r.json();
+    document.getElementById('ctx-loading').style.display = 'none';
+
+    if (!r.ok) {
+      document.getElementById('ctx-error-body').innerHTML = syntaxHighlight(JSON.stringify(data, null, 2));
+      document.getElementById('ctx-error').style.display = 'block';
       return;
     }
-    const rows = runs.map(run => {
-      const st = run.status === 'success' ? 'color:var(--accent2)' : run.status === 'running' ? 'color:var(--accent)' : 'color:var(--danger)';
-      const ts = new Date(run.started_at).toLocaleTimeString();
+
+    renderContext(data);
+    document.getElementById('ctx-result').style.display = 'block';
+  } catch (e) {
+    document.getElementById('ctx-loading').style.display = 'none';
+    document.getElementById('ctx-error-body').textContent = 'Network error: ' + e.message;
+    document.getElementById('ctx-error').style.display = 'block';
+  }
+}
+
+function renderContext(d) {
+  const hh = d.household;
+  // Household block
+  document.getElementById('ctx-hh-block').innerHTML = `
+    <div class="card-title">Household</div>
+    <div class="hh-name" style="margin-bottom:6px;">${hh.name}
+      ${hh.status === 'deleted' ? '<span class="badge badge-danger" style="margin-left:6px">deleted</span>' : ''}
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.8;">
+      <div><strong style="color:var(--text)">ID:</strong> ${hh.id}</div>
+      <div><strong style="color:var(--text)">Advisor:</strong> ${hh.primary_advisor}</div>
+      <div><strong style="color:var(--text)">Risk:</strong> ${hh.risk_profile}</div>
+      <div><strong style="color:var(--text)">Tier:</strong> ${hh.service_tier}</div>
+    </div>`;
+
+  // Totals block
+  const tot = d.totals;
+  const byClass = tot.by_asset_class || {};
+  document.getElementById('ctx-totals-block').innerHTML = `
+    <div class="card-title">AUM Totals</div>
+    <div style="font-size:28px;font-weight:800;color:var(--green);margin-bottom:8px;">
+      $${parseFloat(tot.market_value.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${tot.market_value.currency}</div>
+    ${Object.entries(byClass).map(([cls, amt]) => `
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border2);">
+        <span class="tag">${cls}</span>
+        <span>$${parseFloat(amt).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+      </div>`).join('')}`;
+
+  // Members
+  document.getElementById('ctx-members-block').innerHTML = `
+    <div class="card-title">Members (${d.members.length})</div>
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Age Band</th><th>Phone</th></tr></thead>
+      <tbody>
+        ${d.members.map(m => `<tr>
+          <td>${m.display_name}</td>
+          <td><span class="tag">${m.role}</span></td>
+          <td>${m.email ? `<code>${m.email}</code>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td>${m.age_band || '—'}</td>
+          <td>${m.phone || '<span style="color:var(--text-dim)">—</span>'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // Accounts
+  document.getElementById('ctx-accounts-block').innerHTML = `
+    <div class="card-title">Accounts (${d.accounts.length})</div>
+    ${d.accounts.map(a => `
+      <div style="border:1px solid var(--border2);border-radius:var(--radius);padding:14px;margin-bottom:10px;">
+        <div class="flex-between" style="margin-bottom:8px;">
+          <div>
+            <span style="font-size:13px;font-weight:600;">${a.account_number_last4}</span>
+            <span class="tag" style="margin-left:8px;">${a.registration_type}</span>
+            <span class="badge ${a.status === 'OPEN' ? 'badge-green' : 'badge-danger'}" style="margin-left:6px;">${a.status}</span>
+          </div>
+          <div style="font-size:14px;font-weight:700;color:var(--green);">
+            $${a.market_value ? parseFloat(a.market_value.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+          As of: ${a.as_of_date || '—'} · ${a.owners.length} owner(s)
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Symbol</th><th>Class</th><th>Qty</th><th>Price</th><th>Market Value</th></tr></thead>
+          <tbody>
+            ${a.positions.map(p => `<tr>
+              <td><code>${p.symbol}</code></td>
+              <td><span class="tag">${p.asset_class}</span></td>
+              <td>${p.quantity}</td>
+              <td>$${parseFloat(p.price).toFixed(2)}</td>
+              <td>$${parseFloat(p.market_value.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`).join('')}`;
+
+  // DQ
+  const dq = d.data_quality;
+  const dqClass = dq.status === 'ok' ? 'dq-ok' : dq.status === 'degraded' ? 'dq-degraded' : 'dq-unreliable';
+  document.getElementById('ctx-dq-block').innerHTML = `
+    <div class="card-title">Data Quality
+      <span class="dq ${dqClass}">${dq.status}</span>
+    </div>
+    ${dq.findings.length === 0 ? '<div style="color:var(--text-muted);font-size:12px;">No active findings for this household.</div>' :
+      `<table class="tbl">
+        <thead><tr><th>Severity</th><th>Code</th><th>Message</th>${currentPrincipal === 'ops' ? '<th>Detail</th>' : ''}</tr></thead>
+        <tbody>
+          ${dq.findings.map(f => `<tr>
+            <td><span class="sev sev-${f.severity}">${f.severity.toUpperCase()}</span></td>
+            <td><code>${f.code}</code></td>
+            <td style="color:var(--text-muted)">${f.message}</td>
+            ${currentPrincipal === 'ops' ? `<td>${f.detail ? `<span style="font-size:10px;color:var(--text-muted)">exp: ${f.detail.expected ?? '—'}<br>obs: ${f.detail.observed ?? '—'}</span>` : '—'}</td>` : ''}
+          </tr>`).join('')}
+        </tbody>
+      </table>`}`;
+
+  // Raw JSON
+  document.getElementById('ctx-raw').innerHTML = syntaxHighlight(JSON.stringify(d, null, 2));
+}
+
+// ─── FINDINGS ────────────────────────────────────────────────────────────────
+async function loadFindings() {
+  const filter = document.getElementById('findings-filter').value;
+  const body = document.getElementById('findings-body');
+  body.innerHTML = '<tr><td colspan="4"><div class="flex-gap" style="padding:8px;"><div class="spinner"></div><span style="color:var(--text-muted)">Loading…</span></div></td></tr>';
+
+  // Load findings from all households we know
+  const allFindings = [];
+  for (const hh of HOUSEHOLDS) {
+    try {
+      const r = await fetch(`/v1/households/${hh.id}/context`, { headers: { 'Authorization': 'Bearer ' + OPS_KEY } });
+      if (r.ok) {
+        const d = await r.json();
+        (d.data_quality?.findings || []).forEach(f => allFindings.push({ ...f, household: hh.name, hh_id: hh.id }));
+      }
+    } catch {}
+  }
+
+  const filtered = filter ? allFindings.filter(f => f.severity === filter) : allFindings;
+
+  // Severity counts
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  allFindings.forEach(f => { if (counts[f.severity] !== undefined) counts[f.severity]++; });
+  document.getElementById('findings-stats').innerHTML = Object.entries(counts).map(([sev, cnt]) =>
+    `<div class="stat-tile" style="${cnt > 0 && sev === 'critical' ? 'border-color:var(--danger)' : cnt > 0 && sev === 'high' ? 'border-color:var(--warn)' : ''}">
+      <div class="val" style="color:${sev === 'critical' ? 'var(--danger)' : sev === 'high' ? 'var(--warn)' : sev === 'medium' ? 'var(--purple)' : 'var(--green)'}">${cnt}</div>
+      <div class="lbl">${sev.charAt(0).toUpperCase() + sev.slice(1)}</div>
+    </div>`).join('');
+  document.getElementById('stat-findings').textContent = allFindings.length;
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" class="empty">No findings.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtered.map(f => `<tr>
+    <td><span class="sev sev-${f.severity}">${f.severity.toUpperCase()}</span></td>
+    <td><code>${f.code}</code></td>
+    <td style="color:var(--text-muted);max-width:400px;">${f.message}</td>
+    <td><span class="tag">${f.household}</span></td>
+  </tr>`).join('');
+}
+
+// ─── SYNC RUNS ───────────────────────────────────────────────────────────────
+async function loadRuns() {
+  const body = document.getElementById('runs-body');
+  body.innerHTML = '<tr><td colspan="7"><div class="flex-gap" style="padding:8px;"><div class="spinner"></div></div></td></tr>';
+  try {
+    const r = await fetch('/v1/ops/sync-runs?limit=30', { headers: { 'Authorization': 'Bearer ' + OPS_KEY } });
+    if (!r.ok) { body.innerHTML = '<tr><td colspan="7" class="empty">Error loading runs.</td></tr>'; return; }
+    const runs = await r.json();
+    if (runs.length === 0) { body.innerHTML = '<tr><td colspan="7" class="empty">No runs yet.</td></tr>'; return; }
+    document.getElementById('stat-runs').textContent = runs.length;
+    body.innerHTML = runs.map(run => {
+      const statusColor = run.status === 'success' ? 'var(--green)' : run.status === 'failed' ? 'var(--danger)' : 'var(--warn)';
+      const ts = run.started_at ? new Date(run.started_at).toLocaleString() : '—';
       return `<tr>
-        <td><span class="tag">${run.source.replace('ledgerline_','').replace('meridian_','')}</span></td>
-        <td><span style="${st}">${run.status}</span></td>
-        <td class="mono">${run.records_ingested}</td>
-        <td class="mono">${ts}</td>
+        <td class="mono truncate" style="max-width:180px" title="${run.id}">${run.id.slice(0, 16)}…</td>
+        <td><span class="tag">${run.source}</span></td>
+        <td><span class="tag">${run.run_type}</span></td>
+        <td><span style="color:${statusColor};font-weight:600;">${run.status}</span></td>
+        <td>${run.records_ingested ?? '—'}</td>
+        <td style="color:var(--text-muted);font-size:11px;">${ts}</td>
+        <td style="font-size:11px;color:var(--text-muted);">${run.checkpoint_advanced_to ? run.checkpoint_advanced_to.slice(0, 19) : '—'}</td>
       </tr>`;
     }).join('');
-    document.getElementById('runsTable').innerHTML = `
-      <table>
-        <thead><tr><th>Source</th><th>Status</th><th>Ingested</th><th>Time</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  } catch(e) {
-    document.getElementById('runsTable').innerHTML = '<div class="empty">Error loading runs.</div>';
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7" class="empty">Error: ${e.message}</td></tr>`;
   }
 }
 
-async function loadContext() {
-  const hhId = document.getElementById('hhCustom').value.trim()
-             || document.getElementById('hhSelect').value;
-  if (!hhId) { toast('Select or enter a household ID', false); return; }
-
-  const el = document.getElementById('contextOutput');
-  el.innerHTML = '<span class="spinner"></span> Loading…';
-  try {
-    const r = await fetch(BASE() + '/v1/households/' + hhId + '/context', { headers: H() });
-    const j = await r.json();
-    if (!r.ok) {
-      el.innerHTML = `<div style="color:var(--danger); font-size:13px;">Error ${r.status}: ${j.error?.code} — ${j.error?.message}</div>`;
-      return;
-    }
-    renderContext(el, j);
-  } catch(e) {
-    el.innerHTML = '<div style="color:var(--danger); font-size:13px;">Network error: ' + e.message + '</div>';
-  }
+// ─── JSON SYNTAX HIGHLIGHT ───────────────────────────────────────────────────
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      match => {
+        let cls = 'json-number';
+        if (/^"/.test(match)) cls = /:$/.test(match) ? 'json-key' : 'json-string';
+        else if (/true|false/.test(match)) cls = 'json-bool';
+        else if (/null/.test(match)) cls = 'json-null';
+        return `<span class="${cls}">${match}</span>`;
+      });
 }
 
-function severityBadge(sev) {
-  return `<span class="badge-sev sev-${sev}">${sev}</span>`;
-}
-
-function renderContext(el, ctx) {
-  const hh = ctx.household;
-  const dq = ctx.data_quality;
-  const dqClass = 'status-' + dq.status;
-
-  let accountRows = '';
-  (ctx.accounts || []).forEach(acc => {
-    accountRows += `<tr>
-      <td class="mono">…${acc.account_number_last4}</td>
-      <td><span class="tag">${acc.registration_type || '—'}</span></td>
-      <td><span class="tag">${acc.status}</span></td>
-      <td class="mono">${acc.total_market_value ? '$' + Number(acc.total_market_value).toLocaleString() : '—'}</td>
-    </tr>`;
-  });
-
-  let findingRows = '';
-  (dq.findings || []).forEach(f => {
-    findingRows += `<tr>
-      <td>${severityBadge(f.severity)}</td>
-      <td class="mono">${f.code}</td>
-      <td style="font-size:12px;">${f.message}</td>
-    </tr>`;
-  });
-
-  el.innerHTML = `
-    <div class="stat-row">
-      <div class="stat"><div class="val">${hh.name}</div><div class="lbl">Household</div></div>
-      <div class="stat"><div class="val">$${Number(ctx.totals?.total_aum || 0).toLocaleString()}</div><div class="lbl">Total AUM</div></div>
-      <div class="stat"><div class="val">${ctx.members?.length || 0}</div><div class="lbl">Members</div></div>
-      <div class="stat"><div class="val"><span class="${dqClass}">${dq.status}</span></div><div class="lbl">Data Quality</div></div>
-    </div>
-
-    <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-      Advisor: <b>${hh.primary_advisor || '—'}</b> &nbsp;|&nbsp;
-      Risk: <b>${hh.risk_profile || '—'}</b> &nbsp;|&nbsp;
-      Tier: <b>${hh.service_tier || '—'}</b> &nbsp;|&nbsp;
-      Status: <b>${hh.status}</b>
-    </div>
-
-    ${ctx.accounts?.length ? `
-    <div class="hh-section">
-      <table>
-        <thead><tr><th>Account</th><th>Type</th><th>Status</th><th>Market Value</th></tr></thead>
-        <tbody>${accountRows}</tbody>
-      </table>
-    </div>` : '<div class="empty">No linked accounts.</div>'}
-
-    ${(dq.findings || []).length ? `
-    <div class="hh-section">
-      <h2 style="margin-bottom:8px;">Data Quality Findings</h2>
-      <table>
-        <thead><tr><th>Severity</th><th>Code</th><th>Message</th></tr></thead>
-        <tbody>${findingRows}</tbody>
-      </table>
-    </div>` : ''}
-
-    <details style="margin-top:16px;">
-      <summary>Raw JSON response</summary>
-      <pre>${JSON.stringify(ctx, null, 2)}</pre>
-    </details>`;
-}
-
-// Auto-load on page open
-checkHealth();
+// ─── INIT ────────────────────────────────────────────────────────────────────
+checkApi();
+setInterval(checkApi, 30000);
+loadOverview();
 </script>
 </body>
 </html>
