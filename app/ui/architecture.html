@@ -447,7 +447,7 @@ erDiagram
     <div class="diagram-label">Sequence 1 — CRM Incremental Sync</div>
     <div class="mermaid">
 sequenceDiagram
-    participant Ops as Ops / Cron
+    participant Ops as Ops/Cron
     participant ORCH as SyncOrchestrator
     participant CRM as CRM Connector
     participant API as Ledgerline CRM API
@@ -457,56 +457,52 @@ sequenceDiagram
 
     Ops->>ORCH: POST /v1/ops/sync/crm
     ORCH->>DB: create_run(source, run_type)
-    DB-->>ORCH: run_id (committed immediately)
-    ORCH->>DB: get_checkpoint("ledgerline_crm")
-    DB-->>ORCH: "2026-10-05T17:40:00Z" (or null)
-
-    note over ORCH: run_type = incremental if checkpoint exists
-
+    DB-->>ORCH: run_id committed immediately
+    ORCH->>DB: get_checkpoint(ledgerline_crm)
+    DB-->>ORCH: last checkpoint or null
+    Note over ORCH: incremental if checkpoint exists, else full
     ORCH->>CRM: run(run_id, db, checkpoint)
 
-    loop Cursor pagination
-        CRM->>API: GET /v2/households?updated_since=...&include_deleted=true&cursor=...
+    loop Cursor pagination - households
+        CRM->>API: GET /v2/households updated_since + include_deleted
         alt 429 Too Many Requests
-            API-->>CRM: 429 Retry-After: 5
-            note over CRM: sleep(retry_after); retry with backoff
-        else 503
+            API-->>CRM: 429 with Retry-After header
+            Note over CRM: sleep Retry-After seconds then retry
+        else 503 Service Unavailable
             API-->>CRM: 503
-            note over CRM: exponential backoff, max 5 attempts
+            Note over CRM: exponential backoff up to 5 attempts
         end
-        API-->>CRM: {data: [...], meta: {next_cursor}}
-        loop Each household
-            CRM->>POL: (no PII in household — plain store)
-            CRM->>DB: upsert(source_id, name, advisor, ...)
+        API-->>CRM: page of households with next_cursor
+        loop Each household record
+            CRM->>DB: upsert household by source_id
         end
-        note over CRM: Track max(updated_at) across all pages
+        Note over CRM: track max updated_at across all pages
     end
 
-    loop Contacts pagination (same pattern)
-        CRM->>API: GET /v2/contacts?updated_since=...&include_deleted=true
-        loop Each contact
-            CRM->>POL: hash_tax_id(raw) → hmac
-            CRM->>POL: encrypt(email, phone, dob, notes)
-            CRM->>POL: redact_free_text(notes) before encrypt
-            CRM->>DB: upsert(source_id, household_id, ..., tax_id_hash, email_enc)
+    loop Cursor pagination - contacts
+        CRM->>API: GET /v2/contacts updated_since + include_deleted
+        loop Each contact record
+            CRM->>POL: hash_tax_id - keyed HMAC only
+            CRM->>POL: encrypt email, phone, dob, notes
+            CRM->>POL: redact_free_text before encrypting notes
+            CRM->>DB: upsert person with encrypted fields
         end
     end
 
-    CRM->>DB: link_accounts_to_households()
-    CRM-->>ORCH: SyncResult(records_ingested=16, new_checkpoint="2026-10-05...")
+    CRM->>DB: link_accounts_to_households
+    CRM-->>ORCH: SyncResult with records_ingested and new_checkpoint
 
-    alt No errors
-        ORCH->>DB: set_checkpoint("2026-10-05T17:40:00Z")
-        ORCH->>DB: complete_run(ingested, skipped)
-        ORCH->>REC: run(db, sync_run_id)
-        REC->>DB: query all rules → emit Findings
-        REC->>DB: commit findings atomically
-    else Errors present
-        ORCH->>DB: fail_run(errors) — checkpoint NOT advanced
-        note over ORCH: Prior checkpoint preserved for safe replay
+    alt All pages succeeded
+        ORCH->>DB: set_checkpoint to max updated_at
+        ORCH->>DB: complete_run with counts
+        ORCH->>REC: run reconciliation rules
+        REC->>DB: emit findings and commit atomically
+    else Any page failed
+        ORCH->>DB: fail_run - checkpoint NOT advanced
+        Note over ORCH: prior checkpoint preserved for safe replay
     end
 
-    ORCH-->>Ops: SyncRunOut (run_id, status, ingested, checkpoint)
+    ORCH-->>Ops: SyncRunOut with run_id, status, counts
     </div>
   </div>
 
@@ -520,54 +516,50 @@ sequenceDiagram
     participant DB as Canonical DB
 
     ORCH->>CUST: run(run_id, db, checkpoint)
-    CUST->>FS: scan custodian_drops/ for manifest.json files
+    CUST->>FS: scan custodian_drops for manifest.json files
 
     loop Each drop folder
         CUST->>FS: read manifest.json
-        note over CUST: Validate: drop_id, as_of_date, supersedes, files[]
+        Note over CUST: validate drop_id, as_of_date, supersedes, file list
+        CUST->>DB: lookup existing drop by drop_id
 
-        CUST->>DB: get_by_drop_id(drop_id)
-        alt Already ingested (same payload_hash)
-            note over CUST: No-op — skip, records_skipped++
-        else Same drop_id, different payload_hash
-            note over CUST: CONFLICT — reject, emit error
+        alt Already ingested with same payload hash
+            Note over CUST: no-op, increment records_skipped
+        else Same drop_id but different content
+            Note over CUST: CONFLICT - reject and emit error
         else New drop
-            CUST->>FS: SHA-256 each file; compare to manifest hashes
-            CUST->>FS: row count each CSV; compare to manifest counts
+            CUST->>FS: SHA-256 hash each file, compare to manifest
+            CUST->>FS: row count each CSV, compare to manifest
 
-            alt Hash or count mismatch
-                note over CUST: Reject entire drop atomically\ndb.rollback()
+            alt Hash or row count mismatch
+                Note over CUST: reject entire drop, db.rollback()
             else All checks pass
                 DB->>DB: begin transaction
-                CUST->>DB: create CustodianDrop(status=pending)
+                CUST->>DB: create CustodianDrop with status=pending
                 CUST->>FS: read accounts.csv
                 loop Each account row
-                    note over CUST: primary_tax_id → read, discard immediately
-                    CUST->>DB: upsert Account(account_number, status, ...)
+                    Note over CUST: read primary_tax_id then discard immediately
+                    CUST->>DB: upsert Account by account_number
                 end
-                CUST->>DB: db.flush() ← materialise account IDs for FK
-
+                CUST->>DB: db.flush to materialise account PKs for FK use
                 CUST->>FS: read positions.csv
                 loop Each position row
-                    note over CUST: symbol.upper() → symbol\nparse_decimal($, comma)
-                    CUST->>DB: insert Position(account_id FK, drop_id FK)
+                    Note over CUST: normalise symbol to uppercase, parse decimal values
+                    CUST->>DB: insert Position linked to account and drop
                 end
-
                 CUST->>FS: read balances.csv
                 loop Each balance row
-                    CUST->>DB: insert Valuation(account_id FK, drop_id FK)
+                    CUST->>DB: insert Valuation linked to account and drop
                 end
-
-                CUST->>DB: set_status(drop, "ingested")
+                CUST->>DB: set_status drop to ingested
                 DB->>DB: commit transaction
             end
         end
     end
 
-    CUST->>DB: link_accounts_to_households()
-    note over CUST: Effective snapshot = supersedes chain,\nnot delivery timestamp
-
-    CUST-->>ORCH: SyncResult(records_ingested=114)
+    CUST->>DB: link_accounts_to_households
+    Note over CUST: effective snapshot determined by supersedes chain not delivery time
+    CUST-->>ORCH: SyncResult with records_ingested count
     </div>
   </div>
 
@@ -583,52 +575,47 @@ sequenceDiagram
     participant POL3 as PolicyEngine
     participant DB2 as Canonical DB
 
-    AGT->>MW: GET /v1/households/H-1001/context\nAuthorization: Bearer agent-key-local-001\nX-Correlation-ID: my-trace-001
-
-    MW->>MW: extract/generate correlation_id
-    MW->>MW: bind_contextvars(correlation_id)
-
-    MW->>AUTH2: Depends(require_scope("context:read"))
-    AUTH2->>AUTH2: validate Bearer token → Principal(name="agent", scopes={"context:read"})
-
-    AUTH2->>CTX2: principal, db
+    AGT->>MW: GET /v1/households/H-1001/context with Bearer token
+    MW->>MW: extract or generate correlation_id
+    MW->>MW: bind correlation_id to structured log context
+    MW->>AUTH2: require_scope(context:read)
+    AUTH2->>AUTH2: validate Bearer token, resolve principal
+    AUTH2->>CTX2: pass principal and db session
 
     CTX2->>DB2: has_any_successful_run()
-    alt No successful run ever
+    alt No successful sync has ever completed
         CTX2-->>AGT: 503 context_unavailable
     end
 
-    CTX2->>ASSM: build(household_id="H-1001", principal, db)
-
-    ASSM->>DB2: Household.filter(source_id="H-1001")
-    alt Not found
+    CTX2->>ASSM: build(household_id=H-1001, principal, db)
+    ASSM->>DB2: query Household by source_id
+    alt Household not found
         ASSM-->>AGT: 404 household_not_found
     end
 
-    ASSM->>DB2: Person.filter(household_id=hh.id)
+    ASSM->>DB2: query Persons for household
     loop Each person
-        ASSM->>POL3: decrypt(email_enc) → raw_email
-        ASSM->>POL3: apply_egress("person.email", raw, "agent") → "r***@example.com"
-        ASSM->>POL3: apply_egress("person.phone", raw, "agent") → OMIT
-        ASSM->>POL3: apply_egress("person.date_of_birth", raw, "agent") → "55-64"
-        note over ASSM: OMIT sentinel → field excluded from JSON
+        ASSM->>POL3: decrypt email_enc
+        ASSM->>POL3: apply_egress person.email for agent - returns masked
+        ASSM->>POL3: apply_egress person.phone for agent - returns OMIT
+        ASSM->>POL3: apply_egress person.date_of_birth - returns age band
+        Note over ASSM: OMIT sentinel means field is excluded from response
     end
 
-    ASSM->>DB2: Account.filter(household_id=hh.id)
+    ASSM->>DB2: query Accounts for household
     loop Each account
-        ASSM->>POL3: apply_egress("account.account_number", "8812-4401", "agent") → "****4401"
+        ASSM->>POL3: apply_egress account.account_number - returns last 4
         ASSM->>DB2: latest Valuation from effective drops
         ASSM->>DB2: Positions from that drop
     end
 
-    ASSM->>DB2: Finding.filter(entity_id IN [hh.id, ...account_ids])
-    ASSM->>ASSM: compute data_quality.status\nfrom max finding severity
-    note over ASSM: agent principal → finding.detail OMITTED\nops principal → finding.detail INCLUDED
-
-    ASSM-->>CTX2: response dict
+    ASSM->>DB2: query Findings for household and account ids
+    ASSM->>ASSM: compute data_quality status from max finding severity
+    Note over ASSM: agent gets no finding detail, ops gets full detail
+    ASSM-->>CTX2: assembled response dict
 
     CTX2-->>MW: JSONResponse
-    MW-->>AGT: 200 + X-Correlation-ID: my-trace-001\n{household, members, accounts, totals, freshness, data_quality, correlation_id}
+    MW-->>AGT: 200 with X-Correlation-ID echoed in header and body
     </div>
   </div>
 </section>
