@@ -132,15 +132,16 @@ python server.py
 
 ## Run the Service
 
+Run these commands from the **project root** (the directory that contains the `app/` folder).
+
 **macOS / Linux**
 ```bash
-# Export env vars (or use a .env file with python-dotenv)
 export DATA_ENCRYPTION_KEY="<your_key>"
 export HMAC_SECRET_KEY="<your_hmac_secret>"
 export AGENT_API_KEY="agent-key-local-001"
 export OPS_API_KEY="ops-key-local-001"
 
-uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
 ```
 
 **Windows PowerShell**
@@ -150,8 +151,10 @@ $env:HMAC_SECRET_KEY = "<your_hmac_secret>"
 $env:AGENT_API_KEY = "agent-key-local-001"
 $env:OPS_API_KEY = "ops-key-local-001"
 
-uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
 ```
+
+> **`ModuleNotFoundError: No module named 'app'`?** You are either in the wrong directory or the venv is not active. Run `ls app/` (macOS) or `dir app\` (Windows) — you should see `main.py`. If not, `cd` to the project root first.
 
 The service starts at `http://127.0.0.1:8090`.  
 The demo console is at `http://127.0.0.1:8090/ui/`.  
@@ -251,7 +254,7 @@ export HMAC_SECRET_KEY="deadbeefdeadbeefdeadbeefdeadbeef"
 export AGENT_API_KEY="agent-key-local-001"
 export OPS_API_KEY="ops-key-local-001"
 
-python3 -m pytest tests/ -v
+python -m pytest tests/ -v
 ```
 
 **Windows PowerShell**
