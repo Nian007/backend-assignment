@@ -351,6 +351,8 @@ What a new connector must provide:
 
 The `ReconciliationEngine` runs after every sync. It reads from the canonical store and writes structured `Finding` records. It has no write path to canonical entity tables — reconciliation does not silently correct data.
 
+**Finding replacement strategy:** Each reconciliation run deletes all existing findings before producing a fresh set. This prevents duplicate findings from accumulating across successive sync runs (e.g. CRM sync then custodian sync both triggering reconciliation). The trade-off is that findings are not individually versioned across runs — if a finding disappears after a sync, its history is not retained. For this assignment scope, a clean latest-state view is preferred over historical finding tracking.
+
 ### Rules
 
 | Code | Severity | Check |

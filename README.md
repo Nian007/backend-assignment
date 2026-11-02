@@ -154,8 +154,6 @@ $env:OPS_API_KEY = "ops-key-local-001"
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8090 --reload
 ```
 
-> **`ModuleNotFoundError: No module named 'app'`?** You are either in the wrong directory or the venv is not active. Run `ls app/` (macOS) or `dir app\` (Windows) — you should see `main.py`. If not, `cd` to the project root first.
-
 The service starts at `http://127.0.0.1:8090`.  
 The demo console is at `http://127.0.0.1:8090/ui/`.  
 The architecture deep-dive is at `http://127.0.0.1:8090/architecture`.  

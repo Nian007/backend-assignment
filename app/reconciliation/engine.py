@@ -46,10 +46,15 @@ class ReconciliationEngine:
         """
         Run all reconciliation rules and commit findings.
 
+        Each run replaces previous findings to prevent duplicates.
         Returns the number of findings emitted.
         """
         log = self._log.bind(sync_run_id=sync_run_id)
         log.info("reconciliation_started", rules=len(_RULES))
+
+        from app.models.canonical import Finding
+        db.query(Finding).delete()
+        db.flush()
 
         all_findings = []
         for rule in _RULES:

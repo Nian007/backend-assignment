@@ -5,5 +5,8 @@ __pycache__/
 .env
 .idea/
 progress.md
+interview.md
+flow.md
+Pravar AI*.md
 *.db-shm
 *.db-wal
